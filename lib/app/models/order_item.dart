@@ -3,7 +3,7 @@ import 'product.dart';
 class OrderItem {
   final int? id;
   final int productId;
-  final Product? product;  // Référence produit (optionnelle pour éviter les dépendances circulaires)
+  final Product? product;
   final int quantity;
   final double price;
   final String designation;
@@ -46,7 +46,7 @@ class OrderItem {
     };
   }
 
-  // 🛒 Factory pour créer depuis un produit
+  /// 🛒 Factory pour créer depuis un produit
   factory OrderItem.fromProduct(Product product, int quantity) {
     return OrderItem(
       productId: product.id,
@@ -59,7 +59,7 @@ class OrderItem {
     );
   }
 
-  // 📊 Calculs pour l'UI
+  /// 📊 Calculs pour l'UI
   double get subtotalBeforeDiscount => price * quantity;
   
   double get discountAmount => discount ?? 0.0;
@@ -71,7 +71,7 @@ class OrderItem {
     return subtotalAfterDiscount / quantity;
   }
 
-  // 💰 Formatage pour l'affichage
+  /// 💰 Formatage pour l'affichage
   String get formattedPrice => '${price.toStringAsFixed(2)} €';
   
   String get formattedSubtotal => '${subtotalAfterDiscount.toStringAsFixed(2)} €';
@@ -80,14 +80,14 @@ class OrderItem {
   
   String get quantityDisplay => '$quantity';
 
-  // 🏷️ Infos produit (avec fallback si product est null)
+  /// 🏷️ Infos produit (avec fallback si product est null)
   String get productCode => product?.productCode ?? 'PROD-$productId';
   
   String get productName => product?.description ?? designation;
   
   String get productBrand => product?.brand ?? '';
 
-  // ✏️ Méthodes de modification (retournent une nouvelle instance)
+  /// ✏️ copyWith pour modifications immutables
   OrderItem copyWith({
     int? id,
     int? productId,
@@ -110,25 +110,12 @@ class OrderItem {
     );
   }
 
-  // 🔢 Méthodes utilitaires pour le panier
-  OrderItem increaseQuantity([int amount = 1]) {
-    return copyWith(quantity: quantity + amount);
-  }
-  
-  OrderItem decreaseQuantity([int amount = 1]) {
-    final newQuantity = quantity - amount;
-    return copyWith(quantity: newQuantity > 0 ? newQuantity : 1);
-  }
-  
+  /// 🔢 Modification de quantité (utilisé dans le contrôleur)
   OrderItem updateQuantity(int newQuantity) {
     return copyWith(quantity: newQuantity > 0 ? newQuantity : 1);
   }
-  
-  OrderItem updatePrice(double newPrice) {
-    return copyWith(price: newPrice);
-  }
 
-  // 🔍 Validation
+  /// 🔍 Validation
   bool get isValid => quantity > 0 && price >= 0;
   
   bool get hasDiscount => (discount ?? 0) > 0;

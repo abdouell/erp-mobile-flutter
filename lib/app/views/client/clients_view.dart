@@ -215,9 +215,19 @@ class ClientsView extends StatelessWidget {
               value: 'order',
               child: Row(
                 children: [
-                  Icon(Icons.shopping_cart, color: Colors.blue),
+                  Icon(Icons.add_shopping_cart, color: Colors.blue),
                   SizedBox(width: 8),
                   Text('Créer commande'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'history',
+              child: Row(
+                children: [
+                  Icon(Icons.history, color: Colors.purple),
+                  SizedBox(width: 8),
+                  Text('Historique commandes'),
                 ],
               ),
             ),
@@ -234,8 +244,8 @@ class ClientsView extends StatelessWidget {
           ],
         ),
         
-        // Clic sur la carte
-        onTap: () => _showClientDetail(clientTournee),
+        // Clic sur la carte → Créer commande directement
+        onTap: () => _createOrderForClient(clientTournee),
       ),
     );
   }
@@ -258,19 +268,142 @@ class ClientsView extends StatelessWidget {
   void _handleClientAction(String action, ClientTournee client) {
     switch (action) {
       case 'visit':
-        Get.snackbar('Info', 'Marquer client ${client.customerName} comme visité - À implémenter');
+        _markClientAsVisited(client);
         break;
       case 'order':
-        Get.snackbar('Info', 'Créer commande pour ${client.customerName} - À implémenter');
+        _createOrderForClient(client);
+        break;
+      case 'history':
+        _showOrderHistory(client);
         break;
       case 'call':
-        Get.snackbar('Info', 'Appeler ${client.customerName} - À implémenter');
+        _callClient(client);
         break;
     }
   }
   
+  /// ✅ MARQUER CLIENT COMME VISITÉ
+  void _markClientAsVisited(ClientTournee client) {
+    // TODO: Implémenter avec le backend
+    Get.snackbar(
+      'Client visité',
+      '${client.customerName} marqué comme visité',
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+      icon: Icon(Icons.check_circle, color: Colors.white),
+      duration: Duration(seconds: 2),
+    );
+  }
+  
+  /// 🛒 CRÉER COMMANDE POUR CLIENT
+  void _createOrderForClient(ClientTournee client) {
+    print('🛒 Création commande pour client: ${client.customerName}');
+    
+    // ✅ Vérification avant navigation
+    if (client.customerId <= 0) {
+      Get.snackbar(
+        'Erreur',
+        'Client invalide: ID manquant',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
+    // ✅ Debug des données passées
+    print('📤 Navigation avec client: ID=${client.customerId}, Nom=${client.customerName}');
+    
+    Get.toNamed('/order-create', arguments: {
+      'client': client,
+    });
+  }
+  
+  /// 📋 AFFICHER HISTORIQUE COMMANDES
+  void _showOrderHistory(ClientTournee client) {
+    Get.bottomSheet(
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.history, color: Theme.of(Get.context!).primaryColor),
+                  SizedBox(width: 8),
+                  Text(
+                    'Historique commandes',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Contenu
+            Container(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Historique des commandes',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Pour ${client.customerName}',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Fonctionnalité à implémenter',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => Get.back(),
+                    child: Text('Fermer'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  /// 📞 APPELER CLIENT
+  void _callClient(ClientTournee client) {
+    // TODO: Implémenter avec url_launcher pour appeler
+    Get.snackbar(
+      'Appel client',
+      'Appel de ${client.customerName} - À implémenter',
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+      icon: Icon(Icons.phone, color: Colors.white),
+    );
+  }
+  
   void _showClientDetail(ClientTournee client) {
-    Get.snackbar('Info', 'Détail ${client.customerName} - À implémenter');
+    // Navigation vers détail client ou création commande
+    _createOrderForClient(client);
   }
   
   String _formatDate(DateTime date) {

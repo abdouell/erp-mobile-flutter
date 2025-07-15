@@ -141,7 +141,7 @@ class Product {
     };
   }
 
-  // 🎯 Helper methods pour l'UI
+  /// 🎯 Helper methods utilisés dans l'UI
   String get displayName => description;
   
   String get shortDescription {
@@ -157,28 +157,12 @@ class Product {
   
   String get categoryDisplay => productCategoryCode;
   
-  // Indicateur de stock (si stockMin est défini)
-  bool get hasLowStock => stockMin != null && stockMin! > 0;
-  
-  // Pour la recherche
+  /// 🔍 Pour la recherche (utilisé dans ProductService)
   bool matchesSearch(String query) {
     final searchLower = query.toLowerCase();
     return productCode.toLowerCase().contains(searchLower) ||
            description.toLowerCase().contains(searchLower) ||
            brand.toLowerCase().contains(searchLower) ||
            (barcode?.toLowerCase().contains(searchLower) ?? false);
-  }
-  
-  // Pour le tri
-  static int compareByName(Product a, Product b) {
-    return a.description.compareTo(b.description);
-  }
-  
-  static int compareByPrice(Product a, Product b) {
-    return a.salesPrice.compareTo(b.salesPrice);
-  }
-  
-  static int compareByRank(Product a, Product b) {
-    return a.rank.compareTo(b.rank);
   }
 }

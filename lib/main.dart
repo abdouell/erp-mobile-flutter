@@ -1,4 +1,9 @@
+import 'package:erp_mobile/app/controllers/order_details_controller.dart';
+import 'package:erp_mobile/app/controllers/order_list_controller.dart';
+import 'package:erp_mobile/app/services/customer_service.dart';
 import 'package:erp_mobile/app/views/client/clients_view.dart';
+import 'package:erp_mobile/app/views/order/order_details_view.dart';
+import 'package:erp_mobile/app/views/order/order_list_view.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -24,11 +29,15 @@ void main() async {
   Get.put(TourneeService());
   Get.put(ProductService());
   Get.put(OrderService());
+  Get.put(CustomerService());
   
-  // ✅ CONTROLLERS - Injection globale complète
+  // ✅ CONTROLLERS - Injection globale des controllers persistants uniquement
   Get.put(AuthController());
   Get.put(TourneeController());
   Get.put(OrderController());
+  // ❌ SUPPRIMÉ: Get.put(OrdersListController()); 
+  // ❌ SUPPRIMÉ: Get.put(OrderDetailsController());
+  // Ces contrôleurs seront créés à la demande via les bindings
   
   runApp(MyApp());
 }
@@ -103,6 +112,28 @@ class MyApp extends StatelessWidget {
           transition: Transition.fadeIn,
           transitionDuration: Duration(milliseconds: 500),
         ),
+        
+        // ✅ ROUTE LISTE COMMANDES avec binding
+        GetPage(
+          name: '/orders',
+          page: () => OrdersListView(),
+          binding: BindingsBuilder(() {
+            Get.lazyPut<OrdersListController>(() => OrdersListController());
+          }),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
+        
+        // ✅ ROUTE DÉTAILS COMMANDES avec paramètre et binding
+        GetPage(
+          name: '/order-details/:id',
+          page: () => OrderDetailsView(),
+          binding: BindingsBuilder(() {
+            Get.lazyPut<OrderDetailsController>(() => OrderDetailsController());
+          }),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
       ],
       
       // ✅ Configuration globale
@@ -125,6 +156,8 @@ class MyApp extends StatelessWidget {
                   'Page non trouvée',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
+                SizedBox(height: 8),
+                Text('Route: ${Get.currentRoute}'),
                 SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => Get.offAllNamed('/'),

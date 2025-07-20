@@ -117,7 +117,6 @@ class Order {
   
   bool get canEdit => isDraft;
   bool get canValidate => isDraft && orderDetails.isNotEmpty;
-  bool get canCancel => isDraft;
 
   String get statusDisplay {
     switch (status) {

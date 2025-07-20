@@ -1,17 +1,30 @@
 import 'package:erp_mobile/app/models/client_tournee.dart';
+import 'package:erp_mobile/app/services/tournee_service.dart'; // ✅ Import ajouté
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../models/tournee.dart';
 import '../../models/vendeur.dart';
 
-class ClientsView extends StatelessWidget {
+class ClientsView extends StatefulWidget { // ✅ Changé en StatefulWidget pour gérer l'état local
+  @override
+  _ClientsViewState createState() => _ClientsViewState();
+}
+
+class _ClientsViewState extends State<ClientsView> {
+  late Tournee? tournee;
+  late Vendeur? vendeur;
+
+  @override
+  void initState() {
+    super.initState();
+    // Récupérer les données passées depuis TourneeView
+    final Map<String, dynamic> args = Get.arguments ?? {};
+    tournee = args['tournee'];
+    vendeur = args['vendeur'];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ✅ Récupérer les données passées depuis TourneeView
-    final Map<String, dynamic> args = Get.arguments ?? {};
-    final Tournee? tournee = args['tournee'];
-    final Vendeur? vendeur = args['vendeur'];
-    
     return Scaffold(
       appBar: AppBar(
         title: Text('Mes Clients'),
@@ -24,7 +37,7 @@ class ClientsView extends StatelessWidget {
               padding: EdgeInsets.only(right: 16),
               child: Center(
                 child: Text(
-                  '${tournee.clientsVisites}/${tournee.nombreClients}',
+                  '${tournee!.clientsVisites}/${tournee!.nombreClients}',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -135,24 +148,26 @@ class ClientsView extends StatelessWidget {
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       child: ListTile(
-        // Avatar avec numéro d'ordre
+        // Avatar avec numéro d'ordre - couleur selon statut visite
         leading: CircleAvatar(
           backgroundColor: clientTournee.visite ? Colors.green : Colors.blue,
-          child: Text(
-            '${clientTournee.ordre ?? position}',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+          child: clientTournee.visite 
+              ? Icon(Icons.check, color: Colors.white) // ✅ Icône check si visité
+              : Text(
+                  '${clientTournee.ordre ?? position}',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
         ),
         
-        // ✅ Info client enrichie
+        // Info client enrichie
         title: Text(
-          clientTournee.customerName,  // ← Vrai nom au lieu de "Client #152"
+          clientTournee.customerName,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ Adresse client
+            // Adresse client
             Row(
               children: [
                 Icon(Icons.location_on, size: 14, color: Colors.grey),
@@ -167,7 +182,7 @@ class ClientsView extends StatelessWidget {
               ],
             ),
             
-            // ✅ RC si disponible
+            // RC si disponible
             if (clientTournee.customerRc.isNotEmpty) ...[
               SizedBox(height: 2),
               Row(
@@ -205,9 +220,12 @@ class ClientsView extends StatelessWidget {
               value: 'visit',
               child: Row(
                 children: [
-                  Icon(Icons.check, color: Colors.green),
+                  Icon(
+                    clientTournee.visite ? Icons.remove_circle : Icons.check_circle,
+                    color: clientTournee.visite ? Colors.orange : Colors.green,
+                  ),
                   SizedBox(width: 8),
-                  Text('Marquer visité'),
+                  Text(clientTournee.visite ? 'Marquer non visité' : 'Marquer visité'),
                 ],
               ),
             ),
@@ -282,24 +300,83 @@ class ClientsView extends StatelessWidget {
     }
   }
   
-  /// ✅ MARQUER CLIENT COMME VISITÉ
-  void _markClientAsVisited(ClientTournee client) {
-    // TODO: Implémenter avec le backend
-    Get.snackbar(
-      'Client visité',
-      '${client.customerName} marqué comme visité',
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      icon: Icon(Icons.check_circle, color: Colors.white),
-      duration: Duration(seconds: 2),
-    );
+  /// ✅ MARQUER CLIENT COMME VISITÉ - Version fonctionnelle
+  void _markClientAsVisited(ClientTournee client) async {
+    if (client.id == null) {
+      Get.snackbar(
+        'Erreur',
+        'ID client manquant',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      // ✅ Afficher loading
+      Get.dialog(
+        AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Mise à jour...'),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // ✅ Appel au service
+      final tourneeService = Get.find<TourneeService>();
+      await tourneeService.markCustomerAsVisited(client.id!, !client.visite);
+
+      // ✅ Mettre à jour l'état local
+      setState(() {
+        // Trouver et mettre à jour le client dans la liste
+        final index = tournee!.clients.indexWhere((c) => c.id == client.id);
+        if (index != -1) {
+          tournee!.clients[index] = client.copyWith(visite: !client.visite);
+        }
+      });
+
+      // Fermer loading
+      Get.back();
+
+      // ✅ Notification de succès
+      Get.snackbar(
+        !client.visite ? 'Client visité ✅' : 'Client non visité ⏸️',
+        '${client.customerName} marqué comme ${!client.visite ? "visité" : "non visité"}',
+        backgroundColor: !client.visite ? Colors.green : Colors.orange,
+        colorText: Colors.white,
+        icon: Icon(
+          !client.visite ? Icons.check_circle : Icons.schedule,
+          color: Colors.white,
+        ),
+        duration: Duration(seconds: 2),
+      );
+
+    } catch (e) {
+      // Fermer loading
+      if (Get.isDialogOpen == true) Get.back();
+      
+      // ✅ Gestion d'erreur
+      Get.snackbar(
+        'Erreur',
+        'Impossible de mettre à jour le statut: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        icon: Icon(Icons.error, color: Colors.white),
+        duration: Duration(seconds: 3),
+      );
+    }
   }
   
   /// 🛒 CRÉER COMMANDE POUR CLIENT
   void _createOrderForClient(ClientTournee client) {
     print('🛒 Création commande pour client: ${client.customerName}');
     
-    // ✅ Vérification avant navigation
+    // Vérification avant navigation
     if (client.customerId <= 0) {
       Get.snackbar(
         'Erreur',
@@ -310,7 +387,7 @@ class ClientsView extends StatelessWidget {
       return;
     }
     
-    // ✅ Debug des données passées
+    // Debug des données passées
     print('📤 Navigation avec client: ID=${client.customerId}, Nom=${client.customerName}');
     
     Get.toNamed('/order-create', arguments: {
@@ -399,11 +476,6 @@ class ClientsView extends StatelessWidget {
       colorText: Colors.white,
       icon: Icon(Icons.phone, color: Colors.white),
     );
-  }
-  
-  void _showClientDetail(ClientTournee client) {
-    // Navigation vers détail client ou création commande
-    _createOrderForClient(client);
   }
   
   String _formatDate(DateTime date) {

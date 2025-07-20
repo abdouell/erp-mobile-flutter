@@ -470,56 +470,80 @@ class OrderConfirmationView extends StatelessWidget {
   }
   
   /// 📱 BOTTOM BAR
-  Widget _buildBottomBar(Order order, ClientTournee client) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Bouton Nouvelle commande
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _createNewOrder(client),
-              icon: Icon(Icons.add_shopping_cart),
-              label: Text('Nouvelle commande'),
-              style: OutlinedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+ Widget _buildBottomBar(Order order, ClientTournee client) {
+  return Container(
+    padding: EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.shade200,
+          blurRadius: 4,
+          offset: Offset(0, -2),
+        ),
+      ],
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ✅ Première ligne de boutons
+        Row(
+          children: [
+            // Bouton Nouvelle commande
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _createNewOrder(client),
+                icon: Icon(Icons.add_shopping_cart),
+                label: Text('Nouvelle commande'),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
-          ),
-          
-          SizedBox(width: 12),
-          
-          // Bouton Retour clients
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _returnToClients(),
-              icon: Icon(Icons.people),
-              label: Text('Mes clients'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            
+            SizedBox(width: 12),
+            
+            // ✅ Bouton Mes commandes
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _goToOrdersList(),
+                icon: Icon(Icons.receipt_long),
+                label: Text('Mes commandes'),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
+          ],
+        ),
+        
+        SizedBox(height: 12),
+        
+        // ✅ Deuxième ligne - Bouton principal
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _returnToClients(),
+            icon: Icon(Icons.people),
+            label: Text('Retour aux clients'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
   
   /// 📄 TÉLÉCHARGER PDF
   void _downloadPdf(Order order) async {
@@ -694,4 +718,17 @@ Statut: ${order.statusDisplay}
       (route) => route.settings.name == '/tournee',
     );
   }
+
+  void _goToOrdersList() {
+  // Nettoyer la session
+  final orderController = Get.find<OrderController>();
+  orderController.clearOrder();
+  
+  // Aller à la liste des commandes
+  Get.offNamedUntil(
+    '/orders',
+    (route) => route.settings.name == '/tournee',
+  );
+}
+
 }

@@ -8,6 +8,7 @@ class OrderService extends GetxService {
   final ApiService _apiService = Get.find<ApiService>();
   
   /// Créer ou mettre à jour une commande
+/// Créer ou mettre à jour une commande - Adapté aux modèles Order/OrderItem
 Future<Order> saveOrder(Order order) async {
   try {
     print('=== SAUVEGARDE COMMANDE ===');
@@ -256,7 +257,6 @@ Future<Order> saveOrder(Order order) async {
       'total': order.totalAmount,
       'canEdit': order.canEdit,
       'canValidate': order.canValidate,
-      'canCancel': order.canCancel,
     };
   }
 }

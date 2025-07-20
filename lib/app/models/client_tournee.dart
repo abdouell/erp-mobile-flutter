@@ -1,55 +1,75 @@
 class ClientTournee {
-  final int id;
-  final int tourneeId;
+  final int? id;
   final int customerId;
   final String customerName;
-  final String customerRc;
   final String customerAddress;
-  final int? ordre;
+  final String customerRc;
+  final int ordre;
   final String? commentaire;
-  final bool visite;
-  
+  final bool visite; // ✅ Champ pour le statut de visite
+
   ClientTournee({
-    required this.id,
-    required this.tourneeId,
+    this.id,
     required this.customerId,
     required this.customerName,
-    required this.customerRc,
     required this.customerAddress,
-    this.ordre,
+    required this.customerRc,
+    required this.ordre,
     this.commentaire,
-    this.visite = false,  // ✅ Par défaut non visité
+    required this.visite,
   });
-  
+
   factory ClientTournee.fromJson(Map<String, dynamic> json) {
     return ClientTournee(
       id: json['id'],
-      tourneeId: json['tourneeId'],
-      customerId: json['customerId'],
-      customerName: json['customerName'],
-      customerRc: json['customerRc'],
-      customerAddress: json['customerAddress'],
-      ordre: json['ordre'],
+      customerId: int.parse(json['customerId'].toString()),
+      customerName: json['customerName'] ?? '',
+      customerAddress: json['customerAddress'] ?? '',
+      customerRc: json['customerRc'] ?? '',
+      ordre: json['ordre'] ?? 0,
       commentaire: json['commentaire'],
-      visite: json['visite'] ?? false,  // ✅ Gestion null
+      visite: json['visite'] ?? false, // ✅ Par défaut false
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'tourneeId': tourneeId,
-      'customerId': customerId,
+      'customerId': customerId.toString(),
       'customerName': customerName,
-      'customerRc': customerRc,
       'customerAddress': customerAddress,
+      'customerRc': customerRc,
       'ordre': ordre,
       'commentaire': commentaire,
       'visite': visite,
     };
   }
-  
-  // ✅ Helpers pour l'UI
-  bool get estVisite => visite;
-  bool get estNonVisite => !visite;
+
+  /// ✅ Méthode copyWith nécessaire pour la mise à jour d'état
+  ClientTournee copyWith({
+    int? id,
+    int? customerId,
+    String? customerName,
+    String? customerAddress,
+    String? customerRc,
+    int? ordre,
+    String? commentaire,
+    bool? visite,
+  }) {
+    return ClientTournee(
+      id: id ?? this.id,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      customerAddress: customerAddress ?? this.customerAddress,
+      customerRc: customerRc ?? this.customerRc,
+      ordre: ordre ?? this.ordre,
+      commentaire: commentaire ?? this.commentaire,
+      visite: visite ?? this.visite, // ✅ Important pour _markClientAsVisited
+    );
+  }
+
+  @override
+  String toString() {
+    return 'ClientTournee{id: $id, customerName: $customerName, visite: $visite}';
+  }
 }

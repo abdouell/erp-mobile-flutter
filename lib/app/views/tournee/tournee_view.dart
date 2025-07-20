@@ -84,7 +84,56 @@ class TourneeView extends GetView<TourneeController> {
           
           // Tournée du jour
           _buildTourneeCard(),
+          
+          // ✅ NOUVEAU: Bouton Mes commandes
+          SizedBox(height: 16),
+          _buildCommandesButton(),
         ],
+      ),
+    );
+  }
+  
+  // ✅ NOUVEAU: Bouton pour accéder aux commandes
+  Widget _buildCommandesButton() {
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.receipt_long, color: Colors.orange),
+                SizedBox(width: 8),
+                Text(
+                  'Mes commandes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: 8),
+            
+            Text(
+              'Consulter l\'historique de vos commandes',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            
+            SizedBox(height: 16),
+            
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Get.toNamed('/orders'),
+                icon: Icon(Icons.list_alt),
+                label: Text('Voir mes commandes'),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

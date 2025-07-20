@@ -68,4 +68,36 @@ Future<Vendeur> getVendeurByUserId(int userId) async {
   }
 }
 
+/// ✅ Marquer un client comme visité/non visité
+Future<void> markCustomerAsVisited(int clientTourneeId, bool visite) async {
+  try {
+    print('📝 Marquage client $clientTourneeId comme ${visite ? "visité" : "non visité"}');
+    
+    final response = await _apiService.dio.put(
+      '/api/tournee/client/$clientTourneeId/visite',
+      queryParameters: {'visite': visite},
+    );
+    
+    print('✅ Client marqué avec succès');
+    print('Response status: ${response.statusCode}');
+    
+  } on DioException catch (e) {
+    print('❌ Erreur Dio marquage client: ${e.response?.statusCode}');
+    print('Response data: ${e.response?.data}');
+    
+    if (e.response?.statusCode == 404) {
+      throw Exception('Client de tournée introuvable');
+    } else if (e.response?.statusCode == 403) {
+      throw Exception('Accès refusé pour modifier ce client');
+    } else if (e.response?.statusCode == 400) {
+      throw Exception('Données invalides pour le marquage');
+    } else {
+      throw Exception('Erreur serveur lors du marquage du client');
+    }
+  } catch (e) {
+    print('❌ Erreur générale marquage: $e');
+    throw Exception('Erreur inattendue: $e');
+  }
+}
+
 }

@@ -22,15 +22,63 @@ class OrderItem {
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
+    print('🔍 OrderItem.fromJson - Données reçues: $json');
+    
+    // ✅ ÉTAPE 1: Parser le produit d'abord
+    Product? itemProduct;
+    if (json['product'] != null) {
+      itemProduct = Product.fromJson(json['product']);
+      print('✅ Produit parsé: ${itemProduct.description}, prix: ${itemProduct.salesPrice}');
+    }
+    
+    // ✅ ÉTAPE 2: Récupérer les données de base
+    final int itemQuantity = json['quantity'] ?? 1;
+    final int itemProductId = json['product']?['id'] ?? json['productId'] ?? 0;
+    
+    // ✅ ÉTAPE 3: Récupérer le prix - PRIORITÉ AU PRODUIT
+    double itemPrice = 0.0;
+    
+    // 1. D'abord essayer depuis le produit (source principale)
+    if (itemProduct != null) {
+      itemPrice = itemProduct.salesPrice;
+      print('✅ Prix récupéré depuis product.salesPrice: $itemPrice');
+    }
+    // 2. Fallback sur le champ price direct (si existe)
+    else if (json['price'] != null) {
+      itemPrice = (json['price'] as num).toDouble();
+      print('✅ Prix récupéré depuis price direct: $itemPrice');
+    }
+    
+    // ✅ ÉTAPE 4: Récupérer les autres infos depuis le produit
+    String itemDesignation = '';
+    String itemVat = '';
+    
+    if (itemProduct != null) {
+      itemDesignation = itemProduct.description;
+      itemVat = itemProduct.vatCode;
+    } else {
+      // Fallback sur les champs directs
+      itemDesignation = json['designation'] ?? '';
+      itemVat = json['vat'] ?? '';
+    }
+    
+    // ✅ ÉTAPE 5: Gestion de la remise
+    double? itemDiscount;
+    if (json['discount'] != null) {
+      itemDiscount = (json['discount'] as num).toDouble();
+    }
+    
+    print('✅ OrderItem final - ProductId: $itemProductId, Prix: $itemPrice, Quantité: $itemQuantity, Total: ${itemPrice * itemQuantity}');
+    
     return OrderItem(
       id: json['id'],
-      productId: json['product']?['id'] ?? json['productId'],
-      product: json['product'] != null ? Product.fromJson(json['product']) : null,
-      quantity: json['quantity'],
-      price: (json['price'] ?? 0.0).toDouble(),
-      designation: json['designation'] ?? '',
-      vat: json['vat'] ?? '',
-      discount: json['discount']?.toDouble(),
+      productId: itemProductId,
+      product: itemProduct,
+      quantity: itemQuantity,
+      price: itemPrice,
+      designation: itemDesignation,
+      vat: itemVat,
+      discount: itemDiscount,
     );
   }
 

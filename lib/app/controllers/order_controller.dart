@@ -281,10 +281,7 @@ class OrderController extends GetxController {
     }
   }
   
-  /// ✅ VALIDER COMMANDE
-  // Dans order_controller.dart - Méthode validateOrder() corrigée
-
-/// ✅ VALIDER COMMANDE
+/// ✅ VALIDER COMMANDE - Version avec commentaire dans le dialogue
 Future<void> validateOrder() async {
   try {
     print('🔍 === VALIDATION COMMANDE ===');
@@ -294,25 +291,29 @@ Future<void> validateOrder() async {
       return;
     }
     
-    // Dialogue de confirmation
-    final confirmed = await _showValidationDialog();
-    if (!confirmed) {
+    // ✅ NOUVEAU: Dialogue de validation avec commentaire
+    final validationResult = await _showValidationDialogWithComment();
+    if (validationResult == null || !validationResult['confirmed']) {
       print('❌ Validation annulée par l\'utilisateur');
       return;
     }
     
+    // ✅ Récupérer le commentaire du dialogue
+    final String? orderComment = validationResult['comment'];
+    
     isValidatingOrder.value = true;
     print('🔄 Début validation...');
     
-    // ✅ Créer la commande finale avec vos modèles
+    // ✅ Créer la commande finale avec le commentaire
     final finalOrder = currentOrder.value!.copyWith(
       orderDetails: cartItems.toList(),
       totalAmount: cartTotal.value,
-      status: OrderStatus.VALIDATED, // Utilise votre enum
+      status: OrderStatus.VALIDATED,
+      comment: orderComment?.trim().isEmpty == true ? null : orderComment?.trim(),
     );
     
-    print('💾 Commande à valider: $finalOrder'); // Utilise votre toString()
-    print('📊 Détails: ${finalOrder.itemCount} articles, ${finalOrder.totalQuantity} unités');
+    print('💾 Commande à valider: $finalOrder');
+    print('💬 Commentaire: "${finalOrder.comment}"');
     
     // ✅ Sauvegarder avec gestion d'erreur robuste
     Order savedOrder;
@@ -362,6 +363,125 @@ Future<void> validateOrder() async {
   } finally {
     isValidatingOrder.value = false;
   }
+}
+
+/// 💬 DIALOGUE VALIDATION AVEC COMMENTAIRE
+Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
+  final TextEditingController commentController = TextEditingController();
+  
+  return await Get.dialog<Map<String, dynamic>>(
+    AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.check_circle_outline, color: Colors.green),
+          SizedBox(width: 8),
+          Text('Valider la commande'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ✅ Récapitulatif de la commande
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Récapitulatif',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text('Client: ${selectedClient.value?.customerName}'),
+                  Text('Articles: ${cartItemCount.value}'),
+                  Text('Total: ${cartTotal.value.toStringAsFixed(2)} €'),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: 16),
+            
+            // ✅ Section commentaire
+            Text(
+              'Commentaire (optionnel)',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 8),
+            TextField(
+              controller: commentController,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: InputDecoration(
+                hintText: 'Ajouter un commentaire à cette commande...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                contentPadding: EdgeInsets.all(12),
+              ),
+            ),
+            
+            SizedBox(height: 8),
+            
+            // ✅ Message de confirmation
+            Text(
+              'Confirmer la validation de cette commande ?',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        // Bouton Annuler
+        TextButton(
+          onPressed: () {
+            commentController.dispose();
+            Get.back(result: {'confirmed': false});
+          },
+          child: Text('Annuler'),
+        ),
+        
+        // Bouton Valider
+        ElevatedButton.icon(
+          onPressed: () {
+            final comment = commentController.text.trim();
+            commentController.dispose();
+            Get.back(result: {
+              'confirmed': true,
+              'comment': comment,
+            });
+          },
+          icon: Icon(Icons.check),
+          label: Text('Valider'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// 🛒 VIDER LE PANIER - Version améliorée
@@ -445,37 +565,7 @@ void clearCart() {
   return true;
 }
   
-  /// 💬 DIALOGUE CONFIRMATION
-  Future<bool> _showValidationDialog() async {
-    return await Get.dialog<bool>(
-      AlertDialog(
-        title: Text('Valider la commande'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Client: ${selectedClient.value?.customerName}'),
-            SizedBox(height: 8),
-            Text('Articles: ${cartItemCount.value}'),
-            SizedBox(height: 8),
-            Text('Total: ${cartTotal.value.toStringAsFixed(2)} €'),
-            SizedBox(height: 16),
-            Text('Confirmer la validation de cette commande ?'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            child: Text('Valider'),
-          ),
-        ],
-      ),
-    ) ?? false;
-  }
+  
   
   /// ❌ GESTION ERREURS
   void _handleError(String title, dynamic error) {

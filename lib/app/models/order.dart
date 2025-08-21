@@ -15,6 +15,7 @@ class Order {
   final double totalAmount;
   final String? entrepriseCode;
   final int customerId;
+  final String? comment; // ✅ NOUVEAU CHAMP
 
   Order({
     this.id,
@@ -25,6 +26,7 @@ class Order {
     required this.totalAmount,
     this.entrepriseCode,
     required this.customerId,
+    this.comment, // ✅ NOUVEAU PARAMÈTRE
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,7 @@ class Order {
       totalAmount: (json['totalAmount'] ?? 0.0).toDouble(),
       entrepriseCode: json['entrepriseCode'],
       customerId: json['customerId'],
+      comment: json['comment'], // ✅ NOUVEAU CHAMP
     );
   }
 
@@ -57,6 +60,7 @@ class Order {
       'totalAmount': totalAmount,
       'entrepriseCode': entrepriseCode,
       'customerId': customerId,
+      'comment': comment, // ✅ NOUVEAU CHAMP
     };
   }
 
@@ -65,6 +69,7 @@ class Order {
     required int userId,
     required int customerId,
     String? entrepriseCode,
+    String? comment,
   }) {
     return Order(
       userId: userId,
@@ -74,6 +79,7 @@ class Order {
       totalAmount: 0.0,
       entrepriseCode: entrepriseCode,
       customerId: customerId,
+      comment: comment,
     );
   }
 
@@ -141,6 +147,17 @@ class Order {
     }
   }
 
+  /// 💬 Helpers pour les commentaires
+  bool get hasComment => comment?.isNotEmpty == true;
+  
+  String get displayComment => comment ?? '';
+  
+  String get commentPreview {
+    if (!hasComment) return '';
+    if (comment!.length <= 50) return comment!;
+    return '${comment!.substring(0, 47)}...';
+  }
+
   /// ✏️ copyWith pour modifications immutables
   Order copyWith({
     int? id,
@@ -151,6 +168,7 @@ class Order {
     double? totalAmount,
     String? entrepriseCode,
     int? customerId,
+    String? comment, // ✅ NOUVEAU PARAMÈTRE
   }) {
     return Order(
       id: id ?? this.id,
@@ -161,6 +179,7 @@ class Order {
       totalAmount: totalAmount ?? this.totalAmount,
       entrepriseCode: entrepriseCode ?? this.entrepriseCode,
       customerId: customerId ?? this.customerId,
+      comment: comment ?? this.comment, // ✅ NOUVEAU CHAMP
     );
   }
 
@@ -177,6 +196,6 @@ class Order {
 
   @override
   String toString() {
-    return 'Order{id: $id, customerId: $customerId, status: $status, items: ${orderDetails.length}, total: ${totalAmount.toStringAsFixed(2)}}';
+    return 'Order{id: $id, customerId: $customerId, status: $status, items: ${orderDetails.length}, total: ${totalAmount.toStringAsFixed(2)}, comment: ${hasComment ? '"$commentPreview"' : 'none'}}';
   }
 }

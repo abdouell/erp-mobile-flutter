@@ -1,6 +1,7 @@
 // Dans votre customer_service.dart, corrigez la méthode :
 
 import 'package:dio/dio.dart';
+import 'package:erp_mobile/app/models/order.dart';
 import 'package:get/get.dart';
 import '../models/customer.dart';
 import 'api_service.dart';
@@ -97,4 +98,30 @@ class CustomerService extends GetxService {
       throw Exception('Erreur inattendue: $e');
     }
   }
+
+  /// 📋 RÉCUPÉRER COMMANDES D'UN CLIENT
+Future<List<Order>> getCustomerOrders(int customerId) async {
+  try {
+    print('📋 Récupération commandes client: $customerId');
+    
+    final response = await _apiService.dio.get('/api/order/customer/$customerId');
+    print('✅ Commandes trouvées: ${response.data?.length ?? 0}');
+    
+    final List<dynamic> ordersJson = response.data ?? [];
+    final orders = ordersJson.map((json) => Order.fromJson(json)).toList();
+    
+    // Trier par date décroissante (plus récent en premier)
+    orders.sort((a, b) => b.createdDate.compareTo(a.createdDate));
+    
+    return orders;
+    
+  } on DioException catch (e) {
+    print('❌ Erreur commandes client $customerId: ${e.response?.statusCode}');
+    throw Exception('Erreur lors de la récupération des commandes du client');
+  } catch (e) {
+    print('❌ Erreur générale commandes client: $e');
+    throw Exception('Erreur inattendue: $e');
+  }
+}
+
 }

@@ -281,30 +281,29 @@ class OrderController extends GetxController {
     }
   }
   
-/// ✅ VALIDER COMMANDE - Version avec commentaire dans le dialogue
+/// ✅ VALIDER COMMANDE
 Future<void> validateOrder() async {
   try {
-    print('🔍 === VALIDATION COMMANDE ===');
+    print('🔄 === VALIDATION COMMANDE ===');
     
     if (!_canValidateOrder()) {
       print('❌ Validation impossible');
       return;
     }
     
-    // ✅ NOUVEAU: Dialogue de validation avec commentaire
+    // Dialogue de validation avec commentaire
     final validationResult = await _showValidationDialogWithComment();
     if (validationResult == null || !validationResult['confirmed']) {
       print('❌ Validation annulée par l\'utilisateur');
       return;
     }
     
-    // ✅ Récupérer le commentaire du dialogue
     final String? orderComment = validationResult['comment'];
     
     isValidatingOrder.value = true;
     print('🔄 Début validation...');
     
-    // ✅ Créer la commande finale avec le commentaire
+    // Créer la commande finale avec le commentaire
     final finalOrder = currentOrder.value!.copyWith(
       orderDetails: cartItems.toList(),
       totalAmount: cartTotal.value,
@@ -315,30 +314,23 @@ Future<void> validateOrder() async {
     print('💾 Commande à valider: $finalOrder');
     print('💬 Commentaire: "${finalOrder.comment}"');
     
-    // ✅ Sauvegarder avec gestion d'erreur robuste
-    Order savedOrder;
-    try {
-      savedOrder = await _orderService.saveOrder(finalOrder);
-      print('✅ Sauvegarde serveur réussie: $savedOrder');
-    } catch (saveError) {
-      print('⚠️ Erreur sauvegarde serveur: $saveError');
-      
-      // Fallback : utiliser la commande locale
-      savedOrder = finalOrder.copyWith(
-        id: DateTime.now().millisecondsSinceEpoch,
-      );
-      print('🔧 Fallback commande locale: $savedOrder');
-    }
+    // CHANGEMENT: Appel direct sans try/catch interne
+    Order savedOrder = await _orderService.saveOrder(
+      finalOrder, 
+      clientTourneeId: selectedClient.value?.id
+    );
     
-    // ✅ Mettre à jour la commande locale
+    print('✅ Sauvegarde serveur réussie: $savedOrder');
+    
+    // SEULEMENT EN CAS DE SUCCÈS: mettre à jour la commande locale
     currentOrder.value = savedOrder;
     print('✅ Commande locale mise à jour avec ID: ${savedOrder.id}');
     
-    // ✅ Vider le panier immédiatement
-    print('🗑️ Vidage du panier...');
+    // SEULEMENT EN CAS DE SUCCÈS: vider le panier
+    print('🗑️ Vidage du panier après succès...');
     clearCart();
     
-    // ✅ Succès
+    // SEULEMENT EN CAS DE SUCCÈS: message de succès
     Get.snackbar(
       'Commande validée ! 🎉',
       'Commande #${savedOrder.id} validée avec succès',
@@ -348,7 +340,7 @@ Future<void> validateOrder() async {
       duration: Duration(seconds: 3),
     );
     
-    // ✅ Navigation
+    // SEULEMENT EN CAS DE SUCCÈS: navigation
     print('🧭 Navigation vers confirmation...');
     Get.toNamed('/order-confirmation', arguments: {
       'order': savedOrder,
@@ -359,7 +351,51 @@ Future<void> validateOrder() async {
     
   } catch (e) {
     print('❌ Erreur validation: $e');
-    _handleError('Erreur validation commande', e);
+    
+    // CHANGEMENT: Messages d'erreur détaillés selon le type
+    String errorTitle;
+    String errorMessage;
+    
+    if (e.toString().contains('serveur a retourné une réponse vide')) {
+      errorTitle = 'Erreur de sauvegarde';
+      errorMessage = 'Le serveur n\'a pas confirmé la sauvegarde. Vos données sont conservées, vous pouvez réessayer.';
+    } else if (e.toString().contains('Données de commande invalides')) {
+      errorTitle = 'Données invalides';
+      errorMessage = 'Les informations de la commande sont incorrectes. Vérifiez votre saisie et réessayez.';
+    } else if (e.toString().contains('Erreur serveur interne') || e.toString().contains('Code: 500')) {
+      errorTitle = 'Problème serveur';
+      errorMessage = 'Le serveur rencontre un problème technique. Votre commande est conservée, réessayez dans quelques minutes.';
+    } else if (e.toString().contains('temporairement indisponible') || e.toString().contains('Code: 503')) {
+      errorTitle = 'Service indisponible';
+      errorMessage = 'Le service est temporairement indisponible. Votre commande est conservée, réessayez plus tard.';
+    } else if (e.toString().contains('Accès refusé') || e.toString().contains('Code: 403')) {
+      errorTitle = 'Accès refusé';
+      errorMessage = 'Vous n\'avez pas les permissions nécessaires. Contactez votre administrateur.';
+    } else if (e.toString().contains('communication') || e.toString().contains('network')) {
+      errorTitle = 'Problème de connexion';
+      errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.';
+    } else {
+      errorTitle = 'Erreur de validation';
+      errorMessage = 'Une erreur s\'est produite. Votre commande est conservée, vous pouvez réessayer.';
+    }
+    
+    // CHANGEMENT: Snackbar d'erreur plus visible
+    Get.snackbar(
+      errorTitle,
+      errorMessage,
+      backgroundColor: Colors.red.shade600,
+      colorText: Colors.white,
+      icon: Icon(Icons.error_outline, color: Colors.white),
+      duration: Duration(seconds: 6),
+      snackPosition: SnackPosition.TOP,
+      margin: EdgeInsets.all(16),
+      borderRadius: 8,
+      shouldIconPulse: true,
+    );
+    
+    // IMPORTANT: NE PAS vider le panier en cas d'erreur
+    // L'utilisateur garde sa commande et peut réessayer
+    
   } finally {
     isValidatingOrder.value = false;
   }
@@ -403,6 +439,7 @@ Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
                   ),
                   SizedBox(height: 8),
                   Text('Client: ${selectedClient.value?.customerName}'),
+                  Text('Produits: ${cartItems.length}'),
                   Text('Articles: ${cartItemCount.value}'),
                   Text('Total: ${cartTotal.value.toStringAsFixed(2)} €'),
                 ],

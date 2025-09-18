@@ -69,13 +69,21 @@ Future<Vendeur> getVendeurByUserId(int userId) async {
 }
 
 /// ✅ Marquer un client comme visité/non visité
-Future<void> markCustomerAsVisited(int clientTourneeId, bool visite) async {
+Future<void> markCustomerAsVisited(int clientTourneeId, bool visite, 
+                                   {double? latitude, double? longitude}) async {
   try {
-    print('📝 Marquage client $clientTourneeId comme ${visite ? "visité" : "non visité"}');
+    print('📍 Marquage client $clientTourneeId comme ${visite ? "visité" : "non visité"}');
+    if (latitude != null && longitude != null) {
+      print('📍 Position GPS: $latitude, $longitude');
+    }
     
     final response = await _apiService.dio.put(
       '/api/tournee/client/$clientTourneeId/visite',
-      queryParameters: {'visite': visite},
+      data: {
+        'visite': visite,
+        'latitude': latitude,
+        'longitude': longitude,
+      },
     );
     
     print('✅ Client marqué avec succès');
@@ -96,6 +104,42 @@ Future<void> markCustomerAsVisited(int clientTourneeId, bool visite) async {
     }
   } catch (e) {
     print('❌ Erreur générale marquage: $e');
+    throw Exception('Erreur inattendue: $e');
+  }
+}
+
+/// Clôturer une visite sans vente AVEC géolocalisation
+Future<void> clotureVisiteSansVente(int clientTourneeId, String motif, String? note,
+                                     {double? latitude, double? longitude}) async {
+  try {
+    print('🔒 Clôture visite client $clientTourneeId - Motif: $motif');
+    if (latitude != null && longitude != null) {
+      print('📍 Position GPS: $latitude, $longitude');
+    }
+    
+    final response = await _apiService.dio.put(
+      '/api/tournee/client/$clientTourneeId/cloture-visite',
+      data: {
+        'motif': motif,
+        'note': note?.trim().isEmpty == true ? null : note?.trim(),
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+    );
+    
+    print('✅ Visite clôturée avec succès');
+    
+  } on DioException catch (e) {
+    print('❌ Erreur clôture visite: ${e.response?.statusCode}');
+    
+    if (e.response?.statusCode == 404) {
+      throw Exception('Client de tournée introuvable');
+    } else if (e.response?.statusCode == 400) {
+      throw Exception('Données invalides pour la clôture');
+    } else {
+      throw Exception('Erreur serveur lors de la clôture de visite');
+    }
+  } catch (e) {
     throw Exception('Erreur inattendue: $e');
   }
 }

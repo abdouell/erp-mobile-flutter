@@ -109,7 +109,7 @@ class OrderCreateView extends GetView<OrderController> {
               onPressed: () => _showCartBottomSheet(),
               icon: Icon(Icons.shopping_cart_outlined, color: Colors.white),
             ),
-            if (controller.cartItemCount.value > 0)
+            if (controller.cartItems.isNotEmpty) 
               Positioned(
                 right: 6,
                 top: 6,
@@ -128,7 +128,7 @@ class OrderCreateView extends GetView<OrderController> {
                   ),
                   constraints: BoxConstraints(minWidth: 20, minHeight: 20),
                   child: Text(
-                    '${controller.cartItemCount.value}',
+                    '${controller.cartItems.length}',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -586,18 +586,76 @@ Widget _buildCartFAB() {
   // Dans order_create_view.dart - Bottom sheet simplifié
 
 /// 🛒 BOTTOM SHEET PANIER - Version simplifiée
+/// 🛒 BOTTOM SHEET PANIER - À remplacer dans order_create_view.dart
 void _showCartBottomSheet() {
   Get.bottomSheet(
     Obx(() {
+      // CHANGEMENT: Supprimer la fermeture automatique
       if (controller.cartItems.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (Get.isBottomSheetOpen == true) {
-            Get.back();
-          }
-        });
         return Container(
-          height: 200,
-          child: Center(child: Text('Panier vide')),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header avec bouton fermer
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.shopping_cart, color: Colors.grey.shade400),
+                    SizedBox(width: 8),
+                    Text(
+                      'Mon panier',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Spacer(),
+                    IconButton(
+                      onPressed: () => Get.back(),
+                      icon: Icon(Icons.close),
+                      tooltip: 'Fermer',
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Panier vide
+              Container(
+                height: 200,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.shopping_cart_outlined,
+                      size: 64,
+                      color: Colors.grey.shade400,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Panier vide',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Ajoutez des produits pour créer votre commande',
+                      style: TextStyle(color: Colors.grey.shade500),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+          ),
         );
       }
       
@@ -625,7 +683,7 @@ void _showCartBottomSheet() {
                   ),
                   Spacer(),
                   Text(
-                    '${controller.cartItemCount.value} article(s)',
+                    '${controller.cartItems.length} produit(s) • ${controller.cartItemCount.value} article(s)',  
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                 ],
@@ -645,7 +703,7 @@ void _showCartBottomSheet() {
               ),
             ),
             
-            // Footer avec total et action unique
+            // Footer
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -674,17 +732,15 @@ void _showCartBottomSheet() {
                   
                   SizedBox(height: 16),
                   
-                  // ✅ UN SEUL BOUTON: Valider commande
+                  // CHANGEMENT: Bouton qui ne ferme pas automatiquement
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: controller.isValidatingOrder.value
                           ? null
                           : () {
-                              Get.back(); // Fermer bottom sheet
-                              Future.delayed(Duration(milliseconds: 300), () {
-                                controller.validateOrder();
-                              });
+                              // NE PAS fermer le bottom sheet automatiquement
+                              controller.validateOrder();
                             },
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: 16),
@@ -716,6 +772,8 @@ void _showCartBottomSheet() {
       );
     }),
     isScrollControlled: true,
+    isDismissible: true,
+    enableDrag: true,
   );
 }
   

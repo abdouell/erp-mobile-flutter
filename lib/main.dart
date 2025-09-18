@@ -10,7 +10,6 @@ import 'package:get_storage/get_storage.dart';
 import 'app/views/auth/login_view.dart';
 import 'app/views/tournee/tournee_view.dart';
 import 'app/views/order/order_create_view.dart';
-import 'app/views/order/order_cart_view.dart';
 import 'app/views/order/order_confirmation_view.dart';
 import 'app/services/api_service.dart';
 import 'app/services/tournee_service.dart';
@@ -97,12 +96,6 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: '/order-create',
           page: () => OrderCreateView(),
-          transition: Transition.rightToLeft,
-          transitionDuration: Duration(milliseconds: 300),
-        ),
-        GetPage(
-          name: '/order-cart',
-          page: () => OrderCartView(),
           transition: Transition.rightToLeft,
           transitionDuration: Duration(milliseconds: 300),
         ),

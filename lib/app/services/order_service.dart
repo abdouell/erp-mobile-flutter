@@ -8,97 +8,61 @@ class OrderService extends GetxService {
   final ApiService _apiService = Get.find<ApiService>();
   
   /// Créer ou mettre à jour une commande
-/// Créer ou mettre à jour une commande - Adapté aux modèles Order/OrderItem
-Future<Order> saveOrder(Order order) async {
-  try {
-    print('=== SAUVEGARDE COMMANDE ===');
-    print('Order: $order'); // Utilise le toString() de votre modèle
-    
-    // ✅ Utiliser directement le toJson() de votre modèle Order
-    final orderData = order.toJson();
-    
-    print('📤 Données envoyées: $orderData');
-    
-    final response = await _apiService.dio.post('/api/order', data: orderData);
-    
-    print('✅ Réponse brute: ${response.data}');
-    print('✅ Type de réponse: ${response.data.runtimeType}');
-    
-    // ✅ Gestion robuste de la réponse serveur
-    if (response.data == null || response.data == "" || response.data is String) {
-      print('⚠️ Serveur retourne une réponse vide - Construction manuelle de la réponse');
+Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
+    try {
+      print('=== SAUVEGARDE COMMANDE ===');
+      print('Order: $order');
       
-      // Le serveur a probablement sauvegardé mais ne retourne pas l'objet
-      // On retourne la commande avec un ID généré et le statut validé
-      final savedOrder = order.copyWith(
-        id: order.id ?? DateTime.now().millisecondsSinceEpoch,
-        status: OrderStatus.VALIDATED,
-      );
-      
-      print('✅ Commande construite manuellement: $savedOrder');
-      return savedOrder;
-      
-    } else if (response.data is Map<String, dynamic>) {
-      // ✅ Réponse JSON normale - utiliser votre factory Order.fromJson
-      try {
-        final savedOrder = Order.fromJson(response.data);
-        print('✅ Commande parsée depuis JSON: $savedOrder');
-        return savedOrder;
-      } catch (parseError) {
-        print('❌ Erreur parsing JSON: $parseError');
-        print('❌ JSON reçu: ${response.data}');
-        
-        // Fallback: retourner la commande locale
-        final fallbackOrder = order.copyWith(
-          id: response.data['id'] ?? DateTime.now().millisecondsSinceEpoch,
-          status: OrderStatus.VALIDATED,
-        );
-        print('⚠️ Fallback sur commande locale: $fallbackOrder');
-        return fallbackOrder;
+      final orderData = order.toJson();
+
+      if (clientTourneeId != null) {
+        orderData['clientTourneeId'] = clientTourneeId;
       }
-    } else {
-      print('❌ Type de réponse inattendu: ${response.data.runtimeType}');
       
-      // Dernière chance: retourner la commande locale validée
-      final lastResortOrder = order.copyWith(
-        id: DateTime.now().millisecondsSinceEpoch,
-        status: OrderStatus.VALIDATED,
-      );
-      print('🆘 Dernière chance - commande locale: $lastResortOrder');
-      return lastResortOrder;
+      print('📤 Données envoyées: $orderData');
+      
+      final response = await _apiService.dio.post('/api/order', data: orderData);
+      
+      print('✅ Réponse brute: ${response.data}');
+      print('✅ Type de réponse: ${response.data.runtimeType}');
+      
+      // CHANGEMENT: Plus de fallback, vraies exceptions
+      if (response.data == null || response.data == "" || response.data is String) {
+        throw Exception('Le serveur a retourné une réponse vide ou invalide. La sauvegarde a peut-être échoué.');
+      } else if (response.data is Map<String, dynamic>) {
+        try {
+          final savedOrder = Order.fromJson(response.data);
+          print('✅ Commande parsée depuis JSON: $savedOrder');
+          return savedOrder;
+        } catch (parseError) {
+          print('❌ Erreur parsing JSON: $parseError');
+          throw Exception('Impossible de parser la réponse du serveur: $parseError');
+        }
+      } else {
+        throw Exception('Le serveur a retourné un type de réponse inattendu: ${response.data.runtimeType}');
+      }
+      
+    } on DioException catch (e) {
+      print('❌ Erreur Dio sauvegarde commande: ${e.response?.statusCode}');
+      
+      if (e.response?.statusCode == 400) {
+        throw Exception('Données de commande invalides: ${e.response?.data ?? 'Vérifiez les informations saisies'}');
+      } else if (e.response?.statusCode == 403) {
+        throw Exception('Accès refusé: permissions insuffisantes');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Client ou produit introuvable');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Erreur serveur interne. Veuillez réessayer plus tard.');
+      } else if (e.response?.statusCode == 503) {
+        throw Exception('Service temporairement indisponible');
+      } else {
+        throw Exception('Erreur de communication avec le serveur (Code: ${e.response?.statusCode ?? 'Inconnu'})');
+      }
+    } catch (e) {
+      print('❌ Erreur générale sauvegarde: $e');
+      rethrow; // CHANGEMENT: Plus de fallback, on relance l'exception
     }
-    
-  } on DioException catch (e) {
-    print('❌ Erreur Dio sauvegarde commande: ${e.response?.statusCode}');
-    print('Response data: ${e.response?.data}');
-    print('Response type: ${e.response?.data.runtimeType}');
-    
-    if (e.response?.statusCode == 400) {
-      throw Exception('Données de commande invalides');
-    } else if (e.response?.statusCode == 403) {
-      throw Exception('Accès refusé : permissions insuffisantes');
-    } else if (e.response?.statusCode == 404) {
-      throw Exception('Client ou produit introuvable');
-    } else {
-      throw Exception('Erreur serveur lors de la sauvegarde (${e.response?.statusCode})');
-    }
-  } catch (e) {
-    print('❌ Erreur générale sauvegarde: $e');
-    print('❌ Type d\'erreur: ${e.runtimeType}');
-    
-    // En cas d'erreur générale, on peut retourner la commande locale pour continuer
-    if (e.toString().contains('is not a subtype')) {
-      print('🔧 Erreur de type détectée - retour commande locale');
-      final emergencyOrder = order.copyWith(
-        id: DateTime.now().millisecondsSinceEpoch,
-        status: OrderStatus.VALIDATED,
-      );
-      return emergencyOrder;
-    }
-    
-    throw Exception('Erreur inattendue: $e');
   }
-}
 
 // ✅ Plus besoin de validateOrder() séparée
 // La sauvegarde gère maintenant le statut directement

@@ -1,4 +1,5 @@
 import 'package:erp_mobile/app/controllers/order_controller.dart';
+import 'package:erp_mobile/app/controllers/tournee_controller.dart';
 import 'package:erp_mobile/app/models/client_tournee.dart';
 import 'package:erp_mobile/app/models/order.dart';
 import 'package:flutter/material.dart';
@@ -707,17 +708,25 @@ Statut: ${order.statusDisplay}
   }
   
   /// 👥 RETOURNER AUX CLIENTS
-  void _returnToClients() {
-    // Nettoyer la session
-    final orderController = Get.find<OrderController>();
-    orderController.clearOrder();
+void _returnToClients() {
+  final orderController = Get.find<OrderController>();
+  orderController.clearOrder();
+  
+  final tourneeController = Get.find<TourneeController>();
+  
+  // ✅ FORCER LE REFRESH DES DONNÉES
+  tourneeController.refresh().then((_) {
+    final tournee = tourneeController.tourneeToday.value;
+    final vendeur = tourneeController.vendeur.value;
     
-    // Retourner à la liste des clients
-    Get.offNamedUntil(
-      '/clients',
-      (route) => route.settings.name == '/tournee',
-    );
-  }
+    if (tournee != null && vendeur != null) {
+      Get.offNamedUntil('/clients', (route) => route.settings.name == '/tournee',
+        arguments: {'tournee': tournee, 'vendeur': vendeur});
+    } else {
+      Get.offAllNamed('/tournee');
+    }
+  });
+}
 
   void _goToOrdersList() {
   // Nettoyer la session

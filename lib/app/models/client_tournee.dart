@@ -6,7 +6,9 @@ class ClientTournee {
   final String customerRc;
   final int ordre;
   final String? commentaire;
-  final bool visite; // ✅ Champ pour le statut de visite
+  final bool visite; 
+  final String? motifVisite;
+  final String? noteVisite;
 
   ClientTournee({
     this.id,
@@ -17,6 +19,8 @@ class ClientTournee {
     required this.ordre,
     this.commentaire,
     required this.visite,
+    this.motifVisite, 
+    this.noteVisite, 
   });
 
   factory ClientTournee.fromJson(Map<String, dynamic> json) {
@@ -28,7 +32,9 @@ class ClientTournee {
       customerRc: json['customerRc'] ?? '',
       ordre: json['ordre'] ?? 0,
       commentaire: json['commentaire'],
-      visite: json['visite'] ?? false, // ✅ Par défaut false
+      visite: json['visite'] ?? false, 
+      motifVisite: json['motifVisite'],  
+      noteVisite: json['noteVisite'], 
     );
   }
 
@@ -42,6 +48,8 @@ class ClientTournee {
       'ordre': ordre,
       'commentaire': commentaire,
       'visite': visite,
+      'motifVisite': motifVisite,
+      'noteVisite': noteVisite,
     };
   }
 
@@ -55,6 +63,8 @@ class ClientTournee {
     int? ordre,
     String? commentaire,
     bool? visite,
+    String? motifVisite,  
+    String? noteVisite, 
   }) {
     return ClientTournee(
       id: id ?? this.id,
@@ -64,7 +74,9 @@ class ClientTournee {
       customerRc: customerRc ?? this.customerRc,
       ordre: ordre ?? this.ordre,
       commentaire: commentaire ?? this.commentaire,
-      visite: visite ?? this.visite, // ✅ Important pour _markClientAsVisited
+      visite: visite ?? this.visite, 
+      motifVisite: motifVisite ?? this.motifVisite,
+      noteVisite: noteVisite ?? this.noteVisite, 
     );
   }
 

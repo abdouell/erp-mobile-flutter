@@ -292,7 +292,9 @@ Widget _buildTourneeInfo(Tournee tournee) {
     children: [
       _buildInfoRow(Icons.date_range, 'Date', _formatDate(tournee.date)),
       SizedBox(height: 8),
-      _buildInfoRow(Icons.tag, 'ID Tournée', '#${tournee.id}'),
+      _buildInfoRow(Icons.tag, 'Code', tournee.code),
+      SizedBox(height: 8),
+      _buildInfoRow(Icons.label, 'Nom', tournee.nom),
       SizedBox(height: 8),
       // ✅ Nouvelles statistiques clients
       _buildInfoRow(Icons.people, 'Clients', '${tournee.nombreClients} clients'),

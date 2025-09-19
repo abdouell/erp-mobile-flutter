@@ -3,6 +3,8 @@ import 'package:erp_mobile/app/models/client_tournee.dart';
 
 class Tournee {
   final int id;
+  final String nom;  // ✅ Nouvel attribut nom
+  final String code;  // ✅ Nouvel attribut code
   final DateTime date;
   final String statut;
   final int vendeurId;
@@ -10,6 +12,8 @@ class Tournee {
   
   Tournee({
     required this.id,
+    required this.nom,  // ✅ Nouveau paramètre requis
+    required this.code,  // ✅ Nouveau paramètre requis
     required this.date,
     required this.statut,
     required this.vendeurId,
@@ -20,6 +24,8 @@ class Tournee {
   factory Tournee.fromJson(Map<String, dynamic> json) {
     return Tournee(
       id: json['id'],
+      nom: json['nom'],  // ✅ Parser le nom depuis le JSON
+      code: json['code'],  // ✅ Parser le code depuis le JSON
       date: DateTime.parse(json['date']),
       statut: json['statut'],
       vendeurId: json['vendeurId'],

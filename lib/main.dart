@@ -15,6 +15,7 @@ import 'app/services/api_service.dart';
 import 'app/services/tournee_service.dart';
 import 'app/services/product_service.dart';
 import 'app/services/order_service.dart';
+import 'app/services/location_service.dart';
 import 'app/controllers/auth_controller.dart';
 import 'app/controllers/tournee_controller.dart';
 import 'app/controllers/order_controller.dart';
@@ -29,14 +30,13 @@ void main() async {
   Get.put(ProductService());
   Get.put(OrderService());
   Get.put(CustomerService());
+  Get.put(LocationService());
   
   // ✅ CONTROLLERS - Injection globale des controllers persistants uniquement
   Get.put(AuthController());
   Get.put(TourneeController());
   Get.put(OrderController());
-  // ❌ SUPPRIMÉ: Get.put(OrdersListController()); 
-  // ❌ SUPPRIMÉ: Get.put(OrderDetailsController());
-  // Ces contrôleurs seront créés à la demande via les bindings
+
   
   runApp(MyApp());
 }

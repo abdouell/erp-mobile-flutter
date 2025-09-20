@@ -1,6 +1,7 @@
 import 'package:erp_mobile/app/models/client_tournee.dart';
 import 'package:erp_mobile/app/models/order.dart';
 import 'package:erp_mobile/app/services/customer_service.dart';
+import 'package:erp_mobile/app/services/location_service.dart';
 import 'package:erp_mobile/app/services/tournee_service.dart'; // ✅ Import ajouté
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -329,77 +330,67 @@ void _handleClientAction(String action, ClientTournee client) {
   }
 }
   
-  /// ✅ MARQUER CLIENT COMME VISITÉ - Version fonctionnelle
-  void _markClientAsVisited(ClientTournee client) async {
-    if (client.id == null) {
-      Get.snackbar(
-        'Erreur',
-        'ID client manquant',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    try {
-      // ✅ Afficher loading
-      Get.dialog(
-        AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Mise à jour...'),
-            ],
-          ),
-        ),
-        barrierDismissible: false,
-      );
-
-      // ✅ Appel au service
-      final tourneeService = Get.find<TourneeService>();
-      await tourneeService.markCustomerAsVisited(client.id!, !client.visite);
-
-      // ✅ Mettre à jour l'état local
-      setState(() {
-        // Trouver et mettre à jour le client dans la liste
-        final index = tournee!.clients.indexWhere((c) => c.id == client.id);
-        if (index != -1) {
-          tournee!.clients[index] = client.copyWith(visite: !client.visite);
-        }
-      });
-
-      // Fermer loading
-      Get.back();
-
-      // ✅ Notification de succès
-      Get.snackbar(
-        !client.visite ? 'Client visité ✅' : 'Client non visité ⏸️',
-        '${client.customerName} marqué comme ${!client.visite ? "visité" : "non visité"}',
-        backgroundColor: !client.visite ? Colors.green : Colors.orange,
-        colorText: Colors.white,
-        icon: Icon(
-          !client.visite ? Icons.check_circle : Icons.schedule,
-          color: Colors.white,
-        ),
-        duration: Duration(seconds: 2),
-      );
-
-    } catch (e) {
-      // Fermer loading
-      if (Get.isDialogOpen == true) Get.back();
-      
-      // ✅ Gestion d'erreur
-      Get.snackbar(
-        'Erreur',
-        'Impossible de mettre à jour le statut: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        icon: Icon(Icons.error, color: Colors.white),
-        duration: Duration(seconds: 3),
-      );
-    }
+  /// ✅ MARQUER CLIENT COMME VISITÉ - AVEC géolocalisation
+void _markClientAsVisited(ClientTournee client) async {
+  if (client.id == null) {
+    Get.snackbar('Erreur', 'ID client manquant');
+    return;
   }
+
+  try {
+    // Afficher loading
+    Get.dialog(
+      AlertDialog(content: Row(children: [
+        CircularProgressIndicator(),
+        SizedBox(width: 16),
+        Text('Récupération position...'),
+      ])),
+      barrierDismissible: false,
+    );
+
+    // ÉTAPE NOUVELLE : Récupérer la géolocalisation
+    final locationService = Get.find<LocationService>();
+    final position = await locationService.getCurrentPosition();
+    
+    double? latitude = position?.latitude;
+    double? longitude = position?.longitude;
+    
+    if (position == null) {
+      print('Impossible de récupérer la position GPS');
+      // Continuer sans géolocalisation
+    }
+
+    // Appel au service avec coordonnées
+    final tourneeService = Get.find<TourneeService>();
+    await tourneeService.markCustomerAsVisited(
+      client.id!, 
+      !client.visite,
+      latitude: latitude,
+      longitude: longitude,
+    );
+
+    // Reste du code identique...
+    setState(() {
+      final index = tournee!.clients.indexWhere((c) => c.id == client.id);
+      if (index != -1) {
+        tournee!.clients[index] = client.copyWith(visite: !client.visite);
+      }
+    });
+
+    Get.back(); // Fermer loading
+    
+    Get.snackbar(
+      !client.visite ? 'Client visité' : 'Client non visité',
+      '${client.customerName} marqué comme ${!client.visite ? "visité" : "non visité"}',
+      backgroundColor: !client.visite ? Colors.green : Colors.orange,
+      colorText: Colors.white,
+    );
+
+  } catch (e) {
+    if (Get.isDialogOpen == true) Get.back();
+    Get.snackbar('Erreur', 'Impossible de mettre à jour: $e');
+  }
+}
   
   /// 🛒 CRÉER COMMANDE POUR CLIENT
   void _createOrderForClient(ClientTournee client) {
@@ -789,8 +780,17 @@ void _clotureVisiteSansVente(ClientTournee client, String motif, String? note) a
     );
 
     // Appel au service
+    final locationService = Get.find<LocationService>();
+    final position = await locationService.getCurrentPosition();
+    
     final tourneeService = Get.find<TourneeService>();
-    await tourneeService.clotureVisiteSansVente(client.id!, motif, note);
+    await tourneeService.clotureVisiteSansVente(
+      client.id!, 
+      motif, 
+      note,
+      latitude: position?.latitude,
+      longitude: position?.longitude,
+  );
 
     // Mettre à jour l'état local
     setState(() {

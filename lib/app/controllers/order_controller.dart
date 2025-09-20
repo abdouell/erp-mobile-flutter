@@ -1,3 +1,4 @@
+import 'package:erp_mobile/app/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/product.dart';
@@ -302,6 +303,20 @@ Future<void> validateOrder() async {
     
     isValidatingOrder.value = true;
     print('🔄 Début validation...');
+
+    // ✅ NOUVEAU : Récupérer la géolocalisation
+    print('📍 Récupération position GPS...');
+    final locationService = Get.find<LocationService>();
+    final position = await locationService.getCurrentPosition();
+    
+    double? latitude = position?.latitude;
+    double? longitude = position?.longitude;
+    
+    if (position == null) {
+      print('⚠️ Impossible de récupérer la position GPS, continuation sans géolocalisation');
+    } else {
+      print('✅ Position GPS récupérée: $latitude, $longitude');
+    }
     
     // Créer la commande finale avec le commentaire
     final finalOrder = currentOrder.value!.copyWith(
@@ -309,6 +324,8 @@ Future<void> validateOrder() async {
       totalAmount: cartTotal.value,
       status: OrderStatus.VALIDATED,
       comment: orderComment?.trim().isEmpty == true ? null : orderComment?.trim(),
+      latitude: latitude,    // ✅ NOUVEAU
+      longitude: longitude,  // ✅ NOUVEAU
     );
     
     print('💾 Commande à valider: $finalOrder');

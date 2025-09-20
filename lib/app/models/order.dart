@@ -16,6 +16,8 @@ class Order {
   final String? entrepriseCode;
   final int customerId;
   final String? comment; // ✅ NOUVEAU CHAMP
+  final double? latitude;
+  final double? longitude;
 
   Order({
     this.id,
@@ -27,6 +29,8 @@ class Order {
     this.entrepriseCode,
     required this.customerId,
     this.comment, // ✅ NOUVEAU PARAMÈTRE
+    this.latitude,
+    this.longitude,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,8 @@ class Order {
       entrepriseCode: json['entrepriseCode'],
       customerId: json['customerId'],
       comment: json['comment'], // ✅ NOUVEAU CHAMP
+      latitude: json['latitude']?.toDouble(),
+      longitude: json['longitude']?.toDouble(),
     );
   }
 
@@ -61,6 +67,8 @@ class Order {
       'entrepriseCode': entrepriseCode,
       'customerId': customerId,
       'comment': comment, // ✅ NOUVEAU CHAMP
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -70,6 +78,8 @@ class Order {
     required int customerId,
     String? entrepriseCode,
     String? comment,
+    double? latitude,
+    double? longitude,
   }) {
     return Order(
       userId: userId,
@@ -80,6 +90,8 @@ class Order {
       entrepriseCode: entrepriseCode,
       customerId: customerId,
       comment: comment,
+      latitude: latitude,
+      longitude: longitude,
     );
   }
 
@@ -169,6 +181,8 @@ class Order {
     String? entrepriseCode,
     int? customerId,
     String? comment, // ✅ NOUVEAU PARAMÈTRE
+    double? latitude,
+    double? longitude,
   }) {
     return Order(
       id: id ?? this.id,
@@ -180,6 +194,8 @@ class Order {
       entrepriseCode: entrepriseCode ?? this.entrepriseCode,
       customerId: customerId ?? this.customerId,
       comment: comment ?? this.comment, // ✅ NOUVEAU CHAMP
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 

@@ -1,18 +1,29 @@
 import 'package:erp_mobile/app/models/order_item.dart';
+import 'package:erp_mobile/app/models/statut_visite.dart';
+import 'package:erp_mobile/app/services/location_service.dart';
+import 'package:erp_mobile/app/services/tournee_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/order_controller.dart';
 import '../../models/product.dart';
 import '../../models/client_tournee.dart';
 
+const List<Map<String, String>> MOTIFS_VISITE = [
+  {'code': 'VISITE', 'libelle': 'Visite / Présentation'},
+  {'code': 'RELANCE', 'libelle': 'Relance'},
+  {'code': 'ABSENT', 'libelle': 'Absent / Fermé'},
+  {'code': 'PAS_DE_BESOIN', 'libelle': 'Pas de besoin'},
+  {'code': 'AUTRE', 'libelle': 'Autre'},
+];
+
 class OrderCreateView extends GetView<OrderController> {
   @override
   Widget build(BuildContext context) {
-    // ✅ Récupérer le client avec protection null
+    // Récupérer le client avec protection null
     final Map<String, dynamic> args = Get.arguments ?? {};
     final ClientTournee? client = args['client'];
     
-    // ✅ Vérification de sécurité
+    // Vérification de sécurité
     if (client == null) {
       return Scaffold(
         appBar: AppBar(
@@ -67,11 +78,285 @@ class OrderCreateView extends GetView<OrderController> {
       }
     });
     
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-      floatingActionButton: _buildCartFAB(),
+    // ✅ NOUVEAU : WillPopScope pour intercepter le bouton retour
+    return WillPopScope(
+      onWillPop: () async {
+        return await _handleBackNavigation(client);
+      },
+      child: Scaffold(
+        appBar: _buildAppBar(),
+        body: _buildBody(),
+        floatingActionButton: _buildCartFAB(),
+      ),
     );
+  }
+
+  // ✅ NOUVEAU : Gestion de la navigation arrière
+Future<bool> _handleBackNavigation(ClientTournee client) async {
+  print('🔙 Tentative de retour arrière');
+  
+  if (client.statutVisite != StatutVisite.VISITE_EN_COURS) {
+    return true;
+  }
+  
+  // Afficher le dialogue (maintenant fermable)
+  final result = await _showMandatoryClotureDialog(client);
+  
+  if (result != null && result['confirmed'] == true) {
+    // L'utilisateur veut clôturer maintenant
+    try {
+      await _performClotureVisite(client, result['motif'], result['note']);
+      return true; // Permettre le retour après clôture
+    } catch (e) {
+      Get.snackbar('Erreur', 'Impossible de clôturer: $e');
+      return false; // Bloquer le retour en cas d'erreur
+    }
+  } else {
+    // L'utilisateur a fermé ou reporté
+    Get.snackbar(
+      'Visite en cours',
+      'Vous pourrez clôturer cette visite plus tard',
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+    );
+    return false; // Rester sur la page
+  }
+}
+
+  // ✅ NOUVEAU : Dialogue obligatoire de clôture
+Future<Map<String, dynamic>?> _showMandatoryClotureDialog(ClientTournee client) async {
+  String? selectedMotif;
+  final TextEditingController noteController = TextEditingController();
+  
+  return await Get.dialog<Map<String, dynamic>>(
+    AlertDialog(
+      // ✅ CONTRAINDRE LA LARGEUR
+      contentPadding: EdgeInsets.zero,
+      insetPadding: EdgeInsets.symmetric(horizontal: 40), // Marges latérales
+      content: Container(
+        width: Get.width * 0.85, // 85% de la largeur d'écran maximum
+        constraints: BoxConstraints(
+          maxWidth: 400, // Largeur maximum fixe
+        ),
+        child: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header personnalisé
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Clôture obligatoire',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          noteController.dispose();
+                          Get.back(result: {'confirmed': false});
+                        },
+                        icon: Icon(Icons.close),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Contenu principal
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Message plus compact
+                      Text(
+                        'Visite en cours pour ${client.customerName}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                      
+                      SizedBox(height: 16),
+                      
+                      Text(
+                        'Motif de clôture *',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedMotif,
+                            hint: Text('  Sélectionner un motif'),
+                            isExpanded: true,
+                            items: MOTIFS_VISITE.map((motif) {
+                              return DropdownMenuItem<String>(
+                                value: motif['code'],
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    motif['libelle']!,
+                                    style: TextStyle(fontSize: 14), // Texte plus petit
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setDialogState(() {
+                                selectedMotif = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: 12),
+                      
+                      Text(
+                        'Note (optionnel)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: noteController,
+                        maxLines: 2, // Réduit à 2 lignes
+                        maxLength: 100, // Réduit la longueur
+                        style: TextStyle(fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Note...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: EdgeInsets.all(10), // Padding réduit
+                          isDense: true, // Plus compact
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Actions
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            noteController.dispose();
+                            Get.back(result: {'confirmed': false});
+                          },
+                          child: Text('Reporter'),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: selectedMotif == null 
+                              ? null 
+                              : () {
+                                  final note = noteController.text.trim();
+                                  noteController.dispose();
+                                  Get.back(result: {
+                                    'confirmed': true,
+                                    'motif': selectedMotif!,
+                                    'note': note.isEmpty ? null : note,
+                                  });
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text('Clôturer'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+}
+
+  // ✅ NOUVEAU : Effectuer la clôture de visite
+  Future<void> _performClotureVisite(ClientTournee client, String motif, String? note) async {
+    try {
+      // Afficher loading
+      Get.dialog(
+        AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Clôture en cours...'),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // Récupérer géolocalisation
+      final locationService = Get.find<LocationService>();
+      final position = await locationService.getCurrentPosition();
+      
+      // Appel au service
+      final tourneeService = Get.find<TourneeService>();
+      await tourneeService.checkoutCustomerWithoutOrder(
+        client.id!,
+        motif,
+        note,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+
+      // Fermer loading
+      Get.back();
+
+      // Notification de succès
+      final motifLibelle = MOTIFS_VISITE.firstWhere((m) => m['code'] == motif)['libelle'];
+      Get.snackbar(
+        'Visite clôturée',
+        '${client.customerName}\nMotif: $motifLibelle',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: Duration(seconds: 2),
+      );
+
+    } catch (e) {
+      // Fermer loading
+      if (Get.isDialogOpen == true) Get.back();
+      
+      // Re-lancer l'exception pour que _handleBackNavigation la gère
+      rethrow;
+    }
   }
   
   /// 📱 APP BAR avec info client et panier
@@ -358,7 +643,7 @@ class OrderCreateView extends GetView<OrderController> {
     });
   }
   
-  /// 🛍️ CARD PRODUIT
+  /// 🛒 CARD PRODUIT
   Widget _buildProductCard(Product product) {
     return Card(
       margin: EdgeInsets.only(bottom: 12),
@@ -549,49 +834,110 @@ class OrderCreateView extends GetView<OrderController> {
   }
   
   /// 🛒 FAB PANIER FLOTTANT
- /// 🛒 FAB PANIER FLOTTANT - Version améliorée
-Widget _buildCartFAB() {
-  return Obx(() {
-    // ✅ Vérification multiple pour s'assurer que le FAB disparaît
-    if (controller.cartItemCount.value == 0 || 
-        controller.cartItems.isEmpty || 
-        controller.cartTotal.value == 0.0) {
-      return SizedBox.shrink();
-    }
-    
-    return AnimatedSwitcher(
-      duration: Duration(milliseconds: 300),
-      child: FloatingActionButton.extended(
-        key: ValueKey('cart-fab-${controller.cartItemCount.value}'), // ← Clé pour animation
-        onPressed: () => _showCartBottomSheet(),
-        icon: Icon(Icons.shopping_cart, color: Colors.white),
-        label: Text(
-          '${controller.cartTotal.value.toStringAsFixed(2)} €',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+  Widget _buildCartFAB() {
+    return Obx(() {
+      // Vérification multiple pour s'assurer que le FAB disparaît
+      if (controller.cartItemCount.value == 0 || 
+          controller.cartItems.isEmpty || 
+          controller.cartTotal.value == 0.0) {
+        return SizedBox.shrink();
+      }
+      
+      return AnimatedSwitcher(
+        duration: Duration(milliseconds: 300),
+        child: FloatingActionButton.extended(
+          key: ValueKey('cart-fab-${controller.cartItemCount.value}'),
+          onPressed: () => _showCartBottomSheet(),
+          icon: Icon(Icons.shopping_cart, color: Colors.white),
+          label: Text(
+            '${controller.cartTotal.value.toStringAsFixed(2)} €',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: Theme.of(Get.context!).primaryColor,
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-        backgroundColor: Theme.of(Get.context!).primaryColor,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-    );
-  });
-}
+      );
+    });
+  }
   
   /// 🛒 BOTTOM SHEET PANIER
-  // Dans order_create_view.dart - Bottom sheet simplifié
-
-/// 🛒 BOTTOM SHEET PANIER - Version simplifiée
-/// 🛒 BOTTOM SHEET PANIER - À remplacer dans order_create_view.dart
-void _showCartBottomSheet() {
-  Get.bottomSheet(
-    Obx(() {
-      // CHANGEMENT: Supprimer la fermeture automatique
-      if (controller.cartItems.isEmpty) {
+  void _showCartBottomSheet() {
+    Get.bottomSheet(
+      Obx(() {
+        if (controller.cartItems.isEmpty) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header avec bouton fermer
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.shopping_cart, color: Colors.grey.shade400),
+                      SizedBox(width: 8),
+                      Text(
+                        'Mon panier',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Spacer(),
+                      IconButton(
+                        onPressed: () => Get.back(),
+                        icon: Icon(Icons.close),
+                        tooltip: 'Fermer',
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Panier vide
+                Container(
+                  height: 200,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.shopping_cart_outlined,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Panier vide',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Ajoutez des produits pour créer votre commande',
+                        style: TextStyle(color: Colors.grey.shade500),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
+          );
+        }
+        
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -600,7 +946,7 @@ void _showCartBottomSheet() {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header avec bouton fermer
+              // Header
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -608,174 +954,106 @@ void _showCartBottomSheet() {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.shopping_cart, color: Colors.grey.shade400),
+                    Icon(Icons.shopping_cart, color: Theme.of(Get.context!).primaryColor),
                     SizedBox(width: 8),
                     Text(
                       'Mon panier',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     Spacer(),
-                    IconButton(
-                      onPressed: () => Get.back(),
-                      icon: Icon(Icons.close),
-                      tooltip: 'Fermer',
+                    Text(
+                      '${controller.cartItems.length} produit(s) • ${controller.cartItemCount.value} article(s)',  
+                      style: TextStyle(color: Colors.grey.shade600),
                     ),
                   ],
                 ),
               ),
               
-              // Panier vide
+              // Liste articles
               Container(
-                height: 200,
+                constraints: BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: controller.cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = controller.cartItems[index];
+                    return _buildCartItem(item);
+                  },
+                ),
+              ),
+              
+              // Footer
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.shopping_cart_outlined,
-                      size: 64,
-                      color: Colors.grey.shade400,
+                    // Total
+                    Row(
+                      children: [
+                        Text(
+                          'Total: ',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        Spacer(),
+                        Text(
+                          '${controller.cartTotal.value.toStringAsFixed(2)} €',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(Get.context!).primaryColor,
+                          ),
+                        ),
+                      ],
                     ),
+                    
                     SizedBox(height: 16),
-                    Text(
-                      'Panier vide',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade600,
+                    
+                    // Bouton valider commande
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: controller.isValidatingOrder.value
+                            ? null
+                            : () {
+                                controller.validateOrder();
+                              },
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: controller.isValidatingOrder.value
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Validation...'),
+                                ],
+                              )
+                            : Text('Valider la commande'),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Ajoutez des produits pour créer votre commande',
-                      style: TextStyle(color: Colors.grey.shade500),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 16),
             ],
           ),
         );
-      }
-      
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.shopping_cart, color: Theme.of(Get.context!).primaryColor),
-                  SizedBox(width: 8),
-                  Text(
-                    'Mon panier',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Spacer(),
-                  Text(
-                    '${controller.cartItems.length} produit(s) • ${controller.cartItemCount.value} article(s)',  
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Liste articles
-            Container(
-              constraints: BoxConstraints(maxHeight: 300),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: controller.cartItems.length,
-                itemBuilder: (context, index) {
-                  final item = controller.cartItems[index];
-                  return _buildCartItem(item);
-                },
-              ),
-            ),
-            
-            // Footer
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
-              ),
-              child: Column(
-                children: [
-                  // Total
-                  Row(
-                    children: [
-                      Text(
-                        'Total: ',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Spacer(),
-                      Text(
-                        '${controller.cartTotal.value.toStringAsFixed(2)} €',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(Get.context!).primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  SizedBox(height: 16),
-                  
-                  // CHANGEMENT: Bouton qui ne ferme pas automatiquement
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: controller.isValidatingOrder.value
-                          ? null
-                          : () {
-                              // NE PAS fermer le bottom sheet automatiquement
-                              controller.validateOrder();
-                            },
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: controller.isValidatingOrder.value
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Text('Validation...'),
-                              ],
-                            )
-                          : Text('Valider la commande'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }),
-    isScrollControlled: true,
-    isDismissible: true,
-    enableDrag: true,
-  );
-}
+      }),
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+    );
+  }
   
   /// 🛒 ITEM DANS LE PANIER
   Widget _buildCartItem(OrderItem item) {

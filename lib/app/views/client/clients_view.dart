@@ -1,5 +1,6 @@
 import 'package:erp_mobile/app/models/client_tournee.dart';
 import 'package:erp_mobile/app/models/order.dart';
+import 'package:erp_mobile/app/models/statut_visite.dart';
 import 'package:erp_mobile/app/services/customer_service.dart';
 import 'package:erp_mobile/app/services/location_service.dart';
 import 'package:erp_mobile/app/services/tournee_service.dart'; // ✅ Import ajouté
@@ -156,159 +157,188 @@ class _ClientsViewState extends State<ClientsView> {
     );
   }
   
-  Widget _buildClientCard(ClientTournee clientTournee, int position) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        // Avatar avec numéro d'ordre - couleur selon statut visite
-        leading: CircleAvatar(
-          backgroundColor: clientTournee.visite ? Colors.green : Colors.blue,
-          child: clientTournee.visite 
-              ? Icon(Icons.check, color: Colors.white) // ✅ Icône check si visité
-              : Text(
-                  '${clientTournee.ordre ?? position}',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+ Widget _buildClientCard(ClientTournee clientTournee, int position) {
+  return Card(
+    margin: EdgeInsets.only(bottom: 12),
+    child: ListTile(
+      // Avatar avec statut visuel selon StatutVisite
+      leading: CircleAvatar(
+        backgroundColor: clientTournee.statutVisite.color,
+        child: Icon(
+          clientTournee.statutVisite.icon,
+          color: Colors.white,
+          size: 20,
+        ),
+      ),
+      
+      // Info client enrichie
+      title: Text(
+        clientTournee.customerName,
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Adresse client
+          Row(
+            children: [
+              Icon(Icons.location_on, size: 14, color: Colors.grey),
+              SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  clientTournee.customerAddress,
+                  style: TextStyle(fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
                 ),
-        ),
-        
-        // Info client enrichie
-        title: Text(
-          clientTournee.customerName,
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Adresse client
+              ),
+            ],
+          ),
+          
+          // RC si disponible
+          if (clientTournee.customerRc.isNotEmpty) ...[
+            SizedBox(height: 2),
             Row(
               children: [
-                Icon(Icons.location_on, size: 14, color: Colors.grey),
+                Icon(Icons.business, size: 14, color: Colors.grey),
                 SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    clientTournee.customerAddress,
-                    style: TextStyle(fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Text(
+                  'RC: ${clientTournee.customerRc}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
-            
-            // RC si disponible
-            if (clientTournee.customerRc.isNotEmpty) ...[
-              SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(Icons.business, size: 14, color: Colors.grey),
-                  SizedBox(width: 4),
-                  Text(
-                    'RC: ${clientTournee.customerRc}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ],
-            
-            // Commentaire si présent
-            if (clientTournee.commentaire != null && clientTournee.commentaire!.isNotEmpty) ...[
-              SizedBox(height: 4),
-              Text(
-                clientTournee.commentaire!,
-                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
-              ),
-            ],
-            
-            // Statut
-            SizedBox(height: 6),
-            _buildStatutChip(clientTournee.visite),
           ],
-        ),
-        
-        // Actions
-       trailing: PopupMenuButton<String>(
-  onSelected: (value) => _handleClientAction(value, clientTournee),
-  itemBuilder: (context) => [
-    PopupMenuItem(
-      value: 'visit',
-      child: Row(
-        children: [
-          Icon(
-            clientTournee.visite ? Icons.remove_circle : Icons.check_circle,
-            color: clientTournee.visite ? Colors.orange : Colors.green,
+          
+          // ✅ NOUVEAU : Affichage durée si en cours ou terminé
+          if (clientTournee.isInProgress && clientTournee.checkinAt != null) ...[
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: Colors.orange),
+                SizedBox(width: 4),
+                Text(
+                  'En cours depuis ${_formatDuration(DateTime.now().difference(clientTournee.checkinAt!))}',
+                  style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+                ),
+              ],
+            ),
+          ],
+          
+          // ✅ NOUVEAU : Affichage durée totale si terminé
+          if (clientTournee.isCompleted && clientTournee.formattedDuration.isNotEmpty) ...[
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.timer, size: 14, color: Colors.green),
+                SizedBox(width: 4),
+                Text(
+                  'Durée: ${clientTournee.formattedDuration}',
+                  style: TextStyle(fontSize: 12, color: Colors.green.shade700),
+                ),
+              ],
+            ),
+          ],
+          
+          // Commentaire si présent
+          if (clientTournee.commentaire != null && clientTournee.commentaire!.isNotEmpty) ...[
+            SizedBox(height: 4),
+            Text(
+              clientTournee.commentaire!,
+              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+            ),
+          ],
+          
+          // Statut
+          SizedBox(height: 6),
+          _buildStatutChip(clientTournee.statutVisite),
+        ],
+      ),
+      
+      // Actions selon le statut
+      trailing: _buildClientActions(clientTournee),
+      
+      // Clic sur la carte
+      onTap: () {
+        // Permettre la création de commande seulement si pas encore visité ou en cours
+        if (clientTournee.statutVisite == StatutVisite.NON_VISITE || 
+            clientTournee.statutVisite == StatutVisite.VISITE_EN_COURS) {
+          _createOrderForClient(clientTournee);
+        } else {
+          Get.snackbar(
+            'Visite terminée',
+            'Ce client a déjà été visité',
+            backgroundColor: Colors.blue,
+            colorText: Colors.white,
+          );
+        }
+      },
+    ),
+  );
+}
+
+Widget _buildStatutChip(StatutVisite statut) {
+  return Chip(
+    label: Text(
+      statut.label,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+    backgroundColor: statut.color,
+    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  );
+}
+
+// ✅ HELPER : Formatage durée
+String _formatDuration(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes % 60;
+  
+  if (hours > 0) {
+    return '${hours}h ${minutes}min';
+  } else {
+    return '${minutes}min';
+  }
+}
+    
+Widget _buildClientActions(ClientTournee clientTournee) {
+  // Version simplifiée selon le nouveau workflow
+  switch (clientTournee.statutVisite) {
+    case StatutVisite.NON_VISITE:
+      return Icon(Icons.touch_app, color: Colors.blue.shade300);
+    case StatutVisite.VISITE_EN_COURS:
+      return Icon(Icons.shopping_cart, color: Colors.orange.shade600);
+    case StatutVisite.VISITE_TERMINEE:
+    case StatutVisite.COMMANDE_CREEE:
+      return PopupMenuButton<String>(
+        onSelected: (value) => _handleClientAction(value, clientTournee),
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'history',
+            child: Row(
+              children: [
+                Icon(Icons.history, color: Colors.purple),
+                SizedBox(width: 8),
+                Text('Historique commandes'),
+              ],
+            ),
           ),
-          SizedBox(width: 8),
-          Text(clientTournee.visite ? 'Marquer non visité' : 'Marquer visité'),
+          PopupMenuItem(
+            value: 'call',
+            child: Row(
+              children: [
+                Icon(Icons.phone, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Appeler'),
+              ],
+            ),
+          ),
         ],
-      ),
-    ),
-    
-    // ✅ NOUVEAU : Bouton Clôturer sans visite
-    if (!clientTournee.visite) // Seulement visible si pas encore visité
-      PopupMenuItem(
-        value: 'cloture_sans_visite',
-        child: Row(
-          children: [
-            Icon(Icons.assignment_turned_in, color: Colors.grey.shade700),
-            SizedBox(width: 8),
-            Text('Clôturer sans visite'),
-          ],
-        ),
-      ),
-    
-    PopupMenuItem(
-      value: 'order',
-      child: Row(
-        children: [
-          Icon(Icons.add_shopping_cart, color: Colors.blue),
-          SizedBox(width: 8),
-          Text('Créer commande'),
-        ],
-      ),
-    ),
-    PopupMenuItem(
-      value: 'history',
-      child: Row(
-        children: [
-          Icon(Icons.history, color: Colors.purple),
-          SizedBox(width: 8),
-          Text('Historique commandes'),
-        ],
-      ),
-    ),
-    PopupMenuItem(
-      value: 'call',
-      child: Row(
-        children: [
-          Icon(Icons.phone, color: Colors.orange),
-          SizedBox(width: 8),
-          Text('Appeler'),
-        ],
-      ),
-    ),
-  ],
-),
-        
-        // Clic sur la carte → Créer commande directement
-        onTap: () => _createOrderForClient(clientTournee),
-      ),
-    );
+      );
   }
-  
-  Widget _buildStatutChip(bool visite) {
-    return Chip(
-      label: Text(
-        visite ? 'Visité' : 'À visiter',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      backgroundColor: visite ? Colors.green : Colors.orange,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-  
+}
 
 void _handleClientAction(String action, ClientTournee client) {
   switch (action) {
@@ -332,13 +362,16 @@ void _handleClientAction(String action, ClientTournee client) {
   
   /// ✅ MARQUER CLIENT COMME VISITÉ - AVEC géolocalisation
 void _markClientAsVisited(ClientTournee client) async {
+  // Cette méthode devrait être supprimée car on utilise maintenant
+  // le check-in automatique dans _createOrderForClient
+  // Mais si vous voulez la garder, voici la version corrigée :
+  
   if (client.id == null) {
     Get.snackbar('Erreur', 'ID client manquant');
     return;
   }
 
   try {
-    // Afficher loading
     Get.dialog(
       AlertDialog(content: Row(children: [
         CircularProgressIndicator(),
@@ -348,41 +381,44 @@ void _markClientAsVisited(ClientTournee client) async {
       barrierDismissible: false,
     );
 
-    // ÉTAPE NOUVELLE : Récupérer la géolocalisation
     final locationService = Get.find<LocationService>();
     final position = await locationService.getCurrentPosition();
     
-    double? latitude = position?.latitude;
-    double? longitude = position?.longitude;
+    final tourneeService = Get.find<TourneeService>();
     
-    if (position == null) {
-      print('Impossible de récupérer la position GPS');
-      // Continuer sans géolocalisation
+    // Utiliser les nouvelles méthodes selon le statut actuel
+    if (client.statutVisite == StatutVisite.NON_VISITE) {
+      await tourneeService.checkinCustomer(
+        client.id!,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+    } else if (client.statutVisite == StatutVisite.VISITE_EN_COURS) {
+      // On ne peut pas "dé-checker" un client en cours, il faut clôturer
+      Get.back();
+      Get.snackbar('Action impossible', 'Utilisez la clôture de visite');
+      return;
     }
 
-    // Appel au service avec coordonnées
-    final tourneeService = Get.find<TourneeService>();
-    await tourneeService.markCustomerAsVisited(
-      client.id!, 
-      !client.visite,
-      latitude: latitude,
-      longitude: longitude,
-    );
-
-    // Reste du code identique...
+    // Mettre à jour l'état local
     setState(() {
       final index = tournee!.clients.indexWhere((c) => c.id == client.id);
       if (index != -1) {
-        tournee!.clients[index] = client.copyWith(visite: !client.visite);
+        tournee!.clients[index] = client.copyWith(
+          statutVisite: StatutVisite.VISITE_EN_COURS,
+          checkinAt: DateTime.now(),
+          checkinLat: position?.latitude,
+          checkinLon: position?.longitude,
+        );
       }
     });
 
-    Get.back(); // Fermer loading
+    Get.back();
     
     Get.snackbar(
-      !client.visite ? 'Client visité' : 'Client non visité',
-      '${client.customerName} marqué comme ${!client.visite ? "visité" : "non visité"}',
-      backgroundColor: !client.visite ? Colors.green : Colors.orange,
+      'Client visité',
+      '${client.customerName} marqué comme visité',
+      backgroundColor: Colors.green,
       colorText: Colors.white,
     );
 
@@ -391,30 +427,92 @@ void _markClientAsVisited(ClientTournee client) async {
     Get.snackbar('Erreur', 'Impossible de mettre à jour: $e');
   }
 }
-  
+
   /// 🛒 CRÉER COMMANDE POUR CLIENT
-  void _createOrderForClient(ClientTournee client) {
-    print('🛒 Création commande pour client: ${client.customerName}');
-    
-    // Vérification avant navigation
-    if (client.customerId <= 0) {
+void _createOrderForClient(ClientTournee client) async {
+  print('🛒 Création commande pour client: ${client.customerName}');
+  
+  if (client.customerId <= 0) {
+    Get.snackbar('Erreur', 'Client invalide: ID manquant');
+    return;
+  }
+
+  // ✅ SOLUTION : Créer une copie mise à jour du client
+  ClientTournee updatedClient = client;
+
+  // Check-in automatique si nécessaire
+  if (client.statutVisite == StatutVisite.NON_VISITE) {
+    try {
+      Get.dialog(
+        AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Démarrage de la visite...'),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      final locationService = Get.find<LocationService>();
+      final position = await locationService.getCurrentPosition();
+      
+      final tourneeService = Get.find<TourneeService>();
+      await tourneeService.checkinCustomer(
+        client.id!,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+
+      // ✅ CRÉER LA VERSION MISE À JOUR DU CLIENT
+      updatedClient = client.copyWith(
+        statutVisite: StatutVisite.VISITE_EN_COURS,
+        checkinAt: DateTime.now(),
+        checkinLat: position?.latitude,
+        checkinLon: position?.longitude,
+      );
+
+      // Mettre à jour l'état local
+      setState(() {
+        final index = tournee!.clients.indexWhere((c) => c.id == client.id);
+        if (index != -1) {
+          tournee!.clients[index] = updatedClient;
+        }
+      });
+
+      Get.back(); // Fermer loading
+
       Get.snackbar(
-        'Erreur',
-        'Client invalide: ID manquant',
+        'Visite démarrée',
+        'Visite de ${client.customerName} en cours',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: Duration(seconds: 2),
+      );
+
+    } catch (e) {
+      if (Get.isDialogOpen == true) Get.back();
+      
+      Get.snackbar(
+        'Erreur check-in',
+        'Impossible de démarrer la visite: $e',
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
-      return;
+      return; // Ne pas naviguer en cas d'erreur
     }
-    
-    // Debug des données passées
-    print('📤 Navigation avec client: ID=${client.customerId}, Nom=${client.customerName}');
-    
-    Get.toNamed('/order-create', arguments: {
-      'client': client,
-    });
   }
+
+  // ✅ NAVIGATION AVEC LE CLIENT DANS LE BON ÉTAT
+  print('📤 Navigation avec client statut: ${updatedClient.statutVisite}');
   
+  Get.toNamed('/order-create', arguments: {
+    'client': updatedClient, // Passer le client mis à jour
+  });
+}
+
   /// 📋 AFFICHER HISTORIQUE COMMANDES
   void _showOrderHistory(ClientTournee client) {
   Get.bottomSheet(
@@ -765,7 +863,6 @@ void _clotureVisiteSansVente(ClientTournee client, String motif, String? note) a
   }
 
   try {
-    // Afficher loading
     Get.dialog(
       AlertDialog(
         content: Row(
@@ -779,38 +876,38 @@ void _clotureVisiteSansVente(ClientTournee client, String motif, String? note) a
       barrierDismissible: false,
     );
 
-    // Appel au service
     final locationService = Get.find<LocationService>();
     final position = await locationService.getCurrentPosition();
     
     final tourneeService = Get.find<TourneeService>();
-    await tourneeService.clotureVisiteSansVente(
+    await tourneeService.checkoutCustomerWithoutOrder(  // ✅ CORRIGÉ
       client.id!, 
       motif, 
       note,
       latitude: position?.latitude,
       longitude: position?.longitude,
-  );
+    );
 
     // Mettre à jour l'état local
     setState(() {
       final index = tournee!.clients.indexWhere((c) => c.id == client.id);
       if (index != -1) {
         tournee!.clients[index] = client.copyWith(
-          visite: true,
+          statutVisite: StatutVisite.VISITE_TERMINEE,  // ✅ CORRIGÉ
           motifVisite: motif,
           noteVisite: note,
+          checkoutAt: DateTime.now(),
+          checkoutLat: position?.latitude,
+          checkoutLon: position?.longitude,
         );
       }
     });
 
-    // Fermer loading
     Get.back();
 
-    // Notification de succès
     final motifLibelle = MOTIFS_VISITE.firstWhere((m) => m['code'] == motif)['libelle'];
     Get.snackbar(
-      'Visite clôturée ✅',
+      'Visite clôturée',
       '${client.customerName}\nMotif: $motifLibelle',
       backgroundColor: Colors.green,
       colorText: Colors.white,
@@ -818,7 +915,6 @@ void _clotureVisiteSansVente(ClientTournee client, String motif, String? note) a
     );
 
   } catch (e) {
-    // Fermer loading
     if (Get.isDialogOpen == true) Get.back();
     
     Get.snackbar(
@@ -831,7 +927,6 @@ void _clotureVisiteSansVente(ClientTournee client, String motif, String? note) a
   }
 }
 
-  
   /// 📞 APPELER CLIENT
   void _callClient(ClientTournee client) {
     // TODO: Implémenter avec url_launcher pour appeler

@@ -50,8 +50,8 @@ class Tournee {
   
   // ✅ Nouveaux helpers pour les clients
   int get nombreClients => clients.length;
-  int get clientsVisites => clients.where((c) => c.visite).length;
-  int get clientsNonVisites => clients.where((c) => !c.visite).length;
+  int get clientsVisites => clients.where((c) => c.isVisited).length;
+  int get clientsNonVisites => clients.where((c) => !c.isVisited).length;
   
   // Progression en pourcentage
   double get progressionPourcentage {

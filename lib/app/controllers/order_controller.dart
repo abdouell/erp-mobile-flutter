@@ -1,4 +1,5 @@
 import 'package:erp_mobile/app/services/location_service.dart';
+import 'package:erp_mobile/app/services/tournee_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/product.dart';
@@ -282,10 +283,10 @@ class OrderController extends GetxController {
     }
   }
   
-/// ✅ VALIDER COMMANDE
+/// ✅ VALIDER COMMANDE - AVEC CHECKOUT AUTOMATIQUE
 Future<void> validateOrder() async {
   try {
-    print('🔄 === VALIDATION COMMANDE ===');
+    print('📄 === VALIDATION COMMANDE ===');
     
     if (!_canValidateOrder()) {
       print('❌ Validation impossible');
@@ -302,9 +303,9 @@ Future<void> validateOrder() async {
     final String? orderComment = validationResult['comment'];
     
     isValidatingOrder.value = true;
-    print('🔄 Début validation...');
+    print('📄 Début validation...');
 
-    // ✅ NOUVEAU : Récupérer la géolocalisation
+    // Récupérer la géolocalisation
     print('📍 Récupération position GPS...');
     final locationService = Get.find<LocationService>();
     final position = await locationService.getCurrentPosition();
@@ -324,14 +325,14 @@ Future<void> validateOrder() async {
       totalAmount: cartTotal.value,
       status: OrderStatus.VALIDATED,
       comment: orderComment?.trim().isEmpty == true ? null : orderComment?.trim(),
-      latitude: latitude,    // ✅ NOUVEAU
-      longitude: longitude,  // ✅ NOUVEAU
+      latitude: latitude,
+      longitude: longitude,
     );
     
     print('💾 Commande à valider: $finalOrder');
     print('💬 Commentaire: "${finalOrder.comment}"');
     
-    // CHANGEMENT: Appel direct sans try/catch interne
+    // 1. SAUVEGARDE DE LA COMMANDE
     Order savedOrder = await _orderService.saveOrder(
       finalOrder, 
       clientTourneeId: selectedClient.value?.id
@@ -339,15 +340,36 @@ Future<void> validateOrder() async {
     
     print('✅ Sauvegarde serveur réussie: $savedOrder');
     
-    // SEULEMENT EN CAS DE SUCCÈS: mettre à jour la commande locale
+    // 2. ✅ NOUVEAU : CHECK-OUT AUTOMATIQUE AVEC COMMANDE
+    if (selectedClient.value != null && selectedClient.value!.id != null) {
+      print('🔄 Check-out automatique du client...');
+      
+      try {
+        final tourneeService = Get.find<TourneeService>();
+        await tourneeService.checkoutCustomerWithOrder(
+          selectedClient.value!.id!,
+          latitude: latitude,
+          longitude: longitude,
+        );
+        
+        print('✅ Check-out automatique effectué');
+        
+      } catch (checkoutError) {
+        print('⚠️ Erreur check-out automatique: $checkoutError');
+        // Ne pas faire échouer la validation pour un problème de check-out
+        // La commande est sauvée, on continue
+      }
+    }
+    
+    // 3. MISE À JOUR DE L'ÉTAT LOCAL
     currentOrder.value = savedOrder;
     print('✅ Commande locale mise à jour avec ID: ${savedOrder.id}');
     
-    // SEULEMENT EN CAS DE SUCCÈS: vider le panier
+    // 4. VIDER LE PANIER
     print('🗑️ Vidage du panier après succès...');
     clearCart();
     
-    // SEULEMENT EN CAS DE SUCCÈS: message de succès
+    // 5. MESSAGE DE SUCCÈS
     Get.snackbar(
       'Commande validée ! 🎉',
       'Commande #${savedOrder.id} validée avec succès',
@@ -357,8 +379,14 @@ Future<void> validateOrder() async {
       duration: Duration(seconds: 3),
     );
     
-    // SEULEMENT EN CAS DE SUCCÈS: navigation
+    // 6. NAVIGATION VERS CONFIRMATION
     print('🧭 Navigation vers confirmation...');
+    
+    // ✅ FERMER LE BOTTOM SHEET AVANT LA NAVIGATION
+    if (Get.isBottomSheetOpen == true) {
+      Get.back(); // Fermer le bottom sheet du panier
+    }
+    
     Get.toNamed('/order-confirmation', arguments: {
       'order': savedOrder,
       'client': selectedClient.value,
@@ -369,7 +397,7 @@ Future<void> validateOrder() async {
   } catch (e) {
     print('❌ Erreur validation: $e');
     
-    // CHANGEMENT: Messages d'erreur détaillés selon le type
+    // Messages d'erreur détaillés selon le type
     String errorTitle;
     String errorMessage;
     
@@ -396,7 +424,7 @@ Future<void> validateOrder() async {
       errorMessage = 'Une erreur s\'est produite. Votre commande est conservée, vous pouvez réessayer.';
     }
     
-    // CHANGEMENT: Snackbar d'erreur plus visible
+    // Snackbar d'erreur
     Get.snackbar(
       errorTitle,
       errorMessage,

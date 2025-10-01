@@ -19,7 +19,7 @@ class LoginView extends GetView<AuthController> {
                 'ERP Mobile',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
-              Text('Connexion vendeur', style: TextStyle(color: Colors.grey)),
+              Text('Connexion vendeur 2.0', style: TextStyle(color: Colors.grey)),
               
               SizedBox(height: 48),
               

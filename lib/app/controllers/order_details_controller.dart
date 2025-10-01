@@ -1,4 +1,5 @@
 import 'package:erp_mobile/app/models/customer.dart';
+import 'package:erp_mobile/app/models/statut_visite.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/order.dart';
@@ -324,13 +325,14 @@ Statut: ${currentOrder.statusDisplay}
     }
     
     // Créer un ClientTournee temporaire pour la navigation
+
     final clientTournee = ClientTournee(
       customerId: currentOrder.customerId,
-      customerName: customer.displayName, // ✅ Utilise displayName
-      customerAddress: customer.fullAddress, // ✅ Utilise fullAddress
+      customerName: customer.displayName,
+      customerAddress: customer.fullAddress,
       customerRc: customer.rc ?? '',
       ordre: 0,
-      visite: false,
+      statutVisite: StatutVisite.NON_VISITE, // ✅ Utiliser le nouveau enum
     );
     
     Get.toNamed('/order-create', arguments: {

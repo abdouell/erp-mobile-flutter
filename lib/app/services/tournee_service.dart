@@ -242,4 +242,42 @@ class TourneeService extends GetxService {
     final withOrder = clients.where((c) => c.statutVisite == StatutVisite.COMMANDE_CREEE).length;
     return (withOrder / completed) * 100.0;
   }
+
+  /// Clôturer une tournée
+Future<Tournee> clotureTournee(int tourneeId) async {
+  try {
+    print('🔒 Clôture tournée $tourneeId');
+    
+    final response = await _apiService.dio.post(
+      '/api/tournee/$tourneeId/cloture',
+    );
+    
+    print('✅ Tournée clôturée avec succès');
+    return Tournee.fromJson(response.data);
+    
+  } on DioException catch (e) {
+    print('❌ Erreur clôture tournée: ${e.response?.statusCode}');
+    print('Response data: ${e.response?.data}');
+    
+    if (e.response?.statusCode == 404) {
+      throw Exception('Tournée introuvable');
+    } else if (e.response?.statusCode == 400) {
+      // Gérer les erreurs métier
+      final errorCode = e.response?.data['code'];
+      if (errorCode == 'CLIENTS_IN_PROGRESS') {
+        throw Exception('Des clients sont encore en cours de visite');
+      } else if (errorCode == 'TOURNEE_ALREADY_CLOSED') {
+        throw Exception('La tournée est déjà terminée');
+      } else {
+        throw Exception('Impossible de clôturer la tournée');
+      }
+    } else {
+      throw Exception('Erreur serveur lors de la clôture');
+    }
+  } catch (e) {
+    print('❌ Erreur générale clôture: $e');
+    throw Exception('Erreur inattendue: $e');
+  }
+}
+
 }

@@ -13,16 +13,10 @@ class LoginView extends GetView<AuthController> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Logo/Titre
-              Icon(Icons.business_center, size: 80, color: Colors.blue),
+              Image.asset(  'assets/images/distrimob_logo.png',width: 200,  fit: BoxFit.contain),
               SizedBox(height: 16),
-              Text(
-                'ERP Mobile',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-              ),
               Text('Connexion vendeur 2.0', style: TextStyle(color: Colors.grey)),
-              
               SizedBox(height: 48),
-              
               // Champ Username
               TextFormField(
                 onChanged: (value) => controller.username.value = value,

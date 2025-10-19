@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'ERP Mobile',
+      title: 'DistriMob',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,

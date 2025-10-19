@@ -43,25 +43,35 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
       }
       
     } on DioException catch (e) {
-      print('❌ Erreur Dio sauvegarde commande: ${e.response?.statusCode}');
-      
-      if (e.response?.statusCode == 400) {
-        throw Exception('Données de commande invalides: ${e.response?.data ?? 'Vérifiez les informations saisies'}');
-      } else if (e.response?.statusCode == 403) {
-        throw Exception('Accès refusé: permissions insuffisantes');
-      } else if (e.response?.statusCode == 404) {
-        throw Exception('Client ou produit introuvable');
-      } else if (e.response?.statusCode == 500) {
-        throw Exception('Erreur serveur interne. Veuillez réessayer plus tard.');
-      } else if (e.response?.statusCode == 503) {
-        throw Exception('Service temporairement indisponible');
-      } else {
-        throw Exception('Erreur de communication avec le serveur (Code: ${e.response?.statusCode ?? 'Inconnu'})');
+    print('❌ Erreur Dio sauvegarde commande: ${e.response?.statusCode}');
+    print('Response data: ${e.response?.data}');
+    
+    // ✅ Extraire le message du serveur s'il existe
+    String serverMessage = 'Erreur inconnue';
+    
+    if (e.response?.data != null) {
+      if (e.response?.data is Map<String, dynamic>) {
+        serverMessage = e.response?.data['message'] ?? e.response?.data.toString();
+      } else if (e.response?.data is String) {
+        serverMessage = e.response?.data;
       }
-    } catch (e) {
-      print('❌ Erreur générale sauvegarde: $e');
-      rethrow; // CHANGEMENT: Plus de fallback, on relance l'exception
     }
+    
+    // Lancer l'exception avec le message du serveur
+    if (e.response?.statusCode == 400) {
+      throw Exception(serverMessage);
+    } else if (e.response?.statusCode == 403) {
+      throw Exception('Accès refusé: permissions insuffisantes');
+    } else if (e.response?.statusCode == 404) {
+      throw Exception('Client ou produit introuvable');
+    } else if (e.response?.statusCode == 500) {
+      throw Exception('Erreur serveur interne. Veuillez réessayer plus tard.');
+    } else if (e.response?.statusCode == 503) {
+      throw Exception('Service temporairement indisponible');
+    } else {
+      throw Exception(serverMessage);
+    }
+  }
   }
 
 // ✅ Plus besoin de validateOrder() séparée

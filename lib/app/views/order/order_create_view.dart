@@ -1,3 +1,4 @@
+import 'package:erp_mobile/app/controllers/tournee_controller.dart';
 import 'package:erp_mobile/app/models/order_item.dart';
 import 'package:erp_mobile/app/models/statut_visite.dart';
 import 'package:erp_mobile/app/services/location_service.dart';
@@ -93,34 +94,22 @@ class OrderCreateView extends GetView<OrderController> {
 
   // ✅ NOUVEAU : Gestion de la navigation arrière
 Future<bool> _handleBackNavigation(ClientTournee client) async {
-  print('🔙 Tentative de retour arrière');
+  if (client.statutVisite != StatutVisite.VISITE_EN_COURS) return true;
   
-  if (client.statutVisite != StatutVisite.VISITE_EN_COURS) {
-    return true;
-  }
-  
-  // Afficher le dialogue (maintenant fermable)
   final result = await _showMandatoryClotureDialog(client);
   
   if (result != null && result['confirmed'] == true) {
-    // L'utilisateur veut clôturer maintenant
     try {
       await _performClotureVisite(client, result['motif'], result['note']);
-      return true; // Permettre le retour après clôture
+      return true;
     } catch (e) {
       Get.snackbar('Erreur', 'Impossible de clôturer: $e');
-      return false; // Bloquer le retour en cas d'erreur
+      return false;
     }
-  } else {
-    // L'utilisateur a fermé ou reporté
-    Get.snackbar(
-      'Visite en cours',
-      'Vous pourrez clôturer cette visite plus tard',
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-    );
-    return false; // Rester sur la page
   }
+  
+  Get.snackbar('Visite en cours', 'Vous pourrez clôturer cette visite plus tard', backgroundColor: Colors.blue, colorText: Colors.white);
+  return false;
 }
 
   // ✅ NOUVEAU : Dialogue obligatoire de clôture
@@ -307,58 +296,53 @@ Future<Map<String, dynamic>?> _showMandatoryClotureDialog(ClientTournee client) 
 }
 
   // ✅ NOUVEAU : Effectuer la clôture de visite
-  Future<void> _performClotureVisite(ClientTournee client, String motif, String? note) async {
-    try {
-      // Afficher loading
-      Get.dialog(
-        AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Clôture en cours...'),
-            ],
-          ),
+// Effectuer la clôture de visite via le contrôleur
+Future<void> _performClotureVisite(ClientTournee client, String motif, String? note) async {
+  try {
+    // Afficher loading
+    Get.dialog(
+      AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Clôture en cours...'),
+          ],
         ),
-        barrierDismissible: false,
-      );
+      ),
+      barrierDismissible: false,
+    );
 
-      // Récupérer géolocalisation
-      final locationService = Get.find<LocationService>();
-      final position = await locationService.getCurrentPosition();
-      
-      // Appel au service
-      final tourneeService = Get.find<TourneeService>();
-      await tourneeService.checkoutCustomerWithoutOrder(
-        client.id!,
-        motif,
-        note,
-        latitude: position?.latitude,
-        longitude: position?.longitude,
-      );
+    // Appel au contrôleur (qui gère position + API + refresh)
+    final tourneeController = Get.find<TourneeController>();
+    await tourneeController.checkoutWithoutOrder(
+      client.id!,
+      motif,
+      note,
+    );
 
-      // Fermer loading
-      Get.back();
+    // Fermer loading
+    Get.back();
 
-      // Notification de succès
-      final motifLibelle = MOTIFS_VISITE.firstWhere((m) => m['code'] == motif)['libelle'];
-      Get.snackbar(
-        'Visite clôturée',
-        '${client.customerName}\nMotif: $motifLibelle',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: Duration(seconds: 2),
-      );
+    // Notification de succès
+    final motifLibelle = MOTIFS_VISITE.firstWhere((m) => m['code'] == motif)['libelle'];
+    Get.snackbar(
+      'Visite clôturée',
+      '${client.customerName}\nMotif: $motifLibelle',
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+      duration: Duration(seconds: 2),
+    );
 
-    } catch (e) {
-      // Fermer loading
-      if (Get.isDialogOpen == true) Get.back();
-      
-      // Re-lancer l'exception pour que _handleBackNavigation la gère
-      rethrow;
-    }
+  } catch (e) {
+    // Fermer loading
+    if (Get.isDialogOpen == true) Get.back();
+    
+    // Re-lancer l'exception
+    rethrow;
   }
-  
+}
+
   /// 📱 APP BAR avec info client et panier
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
@@ -704,68 +688,243 @@ Future<Map<String, dynamic>?> _showMandatoryClotureDialog(ClientTournee client) 
     );
   }
   
-  /// ℹ️ INFO PRODUIT
-  Widget _buildProductInfo(Product product) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Nom produit
-        Text(
-          product.displayName,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+/// ℹ️ INFO PRODUIT - AVEC AFFICHAGE STOCK
+/// ℹ️ INFO PRODUIT - VERSION COMPLÈTE
+Widget _buildProductInfo(Product product) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Nom produit
+      Text(
+        product.displayName,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
         ),
-        
-        SizedBox(height: 4),
-        
-        // Code produit
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      
+      SizedBox(height: 4),
+      
+      // Code produit
+      Text(
+        'Ref: ${product.productCode}',
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey.shade600,
+        ),
+      ),
+      
+      SizedBox(height: 6),
+      
+      // ✅ PRIX AVEC REMISE
+      if (product.hasDiscount) ...[
+        // Prix client en vert avec badge remise
+        Row(
+          children: [
+            Text(
+              product.formattedEffectivePrice,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade700,
+              ),
+            ),
+            SizedBox(width: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                product.formattedDiscount,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 2),
+        // Prix catalogue barré
         Text(
-          'Ref: ${product.productCode}',
+          product.formattedCatalogPrice,
           style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
+            fontSize: 14,
+            color: Colors.grey.shade500,
+            decoration: TextDecoration.lineThrough,
           ),
         ),
-        
-        SizedBox(height: 4),
-        
-        // Prix
+      ] else ...[
+        // Prix normal (pas de remise)
         Text(
-          product.formattedPrice,
+          product.formattedEffectivePrice,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Theme.of(Get.context!).primaryColor,
           ),
         ),
-        
-        // Statut disponibilité
-        if (!product.isAvailable) ...[
-          SizedBox(height: 4),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.red.shade100,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              'Indisponible',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.red.shade700,
-                fontWeight: FontWeight.bold,
+      ],
+      
+      SizedBox(height: 6),
+      
+      // ✅ STATUTS (Disponibilité + Stock)
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          // Indisponible
+          if (!product.isAvailable)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Indisponible',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
+          
+          // Stock (pour vendeurs conventionnels)
+          if (product.hasStockInfo) ...[
+            if (product.isOutOfStock)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error, size: 12, color: Colors.red.shade700),
+                    SizedBox(width: 4),
+                    Text(
+                      'Rupture de stock',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (product.isLowStock)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.warning, size: 12, color: Colors.orange.shade700),
+                    SizedBox(width: 4),
+                    Text(
+                      product.stockLabel,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, size: 12, color: Colors.green.shade700),
+                    SizedBox(width: 4),
+                    Text(
+                      product.stockLabel,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
-      ],
-    );
+      ),
+    ],
+  );
+}
+
+/// ✅ NOUVEAU : Badge stock avec couleurs selon disponibilité
+Widget _buildStockBadge(Product product) {
+  Color backgroundColor;
+  Color textColor;
+  IconData icon;
+  
+  if (product.isOutOfStock) {
+    // Rupture de stock
+    backgroundColor = Colors.red.shade100;
+    textColor = Colors.red.shade700;
+    icon = Icons.cancel_outlined;
+  } else if (product.isLowStock) {
+    // Stock faible
+    backgroundColor = Colors.orange.shade100;
+    textColor = Colors.orange.shade700;
+    icon = Icons.warning_amber_outlined;
+  } else {
+    // Stock normal
+    backgroundColor = Colors.green.shade100;
+    textColor = Colors.green.shade700;
+    icon = Icons.check_circle_outline;
   }
   
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(
+        color: textColor.withOpacity(0.3),
+        width: 1,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: textColor),
+        SizedBox(width: 4),
+        Text(
+          product.stockLabel,
+          style: TextStyle(
+            fontSize: 11,
+            color: textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
   /// 🛒 ACTIONS PANIER
   Widget _buildProductActions(Product product) {
     return Obx(() {

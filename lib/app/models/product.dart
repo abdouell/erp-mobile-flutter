@@ -11,6 +11,12 @@ class Product {
   final String productTypeCode;
   final String? supplierCode;
   final double salesPrice;
+
+  // ✅ NOUVEAUX CHAMPS pour tarification client
+  final double? customerPrice;      // Prix client spécifique (null si = catalogue)
+  final double? discountPercent;    // % de remise (null si pas de remise)
+  final bool hasPriceList;          // Indique si le client a un tarif spécial
+
   final String vatCode;
   final bool hold;
   final String rangeCode;
@@ -34,6 +40,8 @@ class Product {
   final Uint8List? photo;
   final bool? freeProduct;
   final double? colisageCarton;
+  final int? quantiteEnStock; //Stock disponible pour vendeur conventionnel
+
 
   Product({
     required this.id,
@@ -46,6 +54,9 @@ class Product {
     required this.productTypeCode,
     this.supplierCode,
     required this.salesPrice,
+    this.customerPrice,
+    this.discountPercent,
+    this.hasPriceList = false,
     required this.vatCode,
     required this.hold,
     required this.rangeCode,
@@ -67,7 +78,8 @@ class Product {
     this.photo,
     this.freeProduct,
     this.colisageCarton,
-  });
+    this.quantiteEnStock,
+    });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -81,6 +93,9 @@ class Product {
       productTypeCode: json['productTypeCode'],
       supplierCode: json['supplierCode'],
       salesPrice: (json['salesPrice'] ?? 0.0).toDouble(),
+      customerPrice: json['customerPrice']?.toDouble(),
+      discountPercent: json['discountPercent']?.toDouble(),
+      hasPriceList: json['hasPriceList'] ?? false,
       vatCode: json['vatCode'],
       hold: json['hold'] ?? false,
       rangeCode: json['rangeCode'],
@@ -102,6 +117,7 @@ class Product {
       photo: json['photo'] != null ? Uint8List.fromList(List<int>.from(json['photo'])) : null,
       freeProduct: json['freeProduct'],
       colisageCarton: json['colisageCarton']?.toDouble(),
+      quantiteEnStock: json['quantiteStock'],
     );
   }
 
@@ -117,6 +133,9 @@ class Product {
       'productTypeCode': productTypeCode,
       'supplierCode': supplierCode,
       'salesPrice': salesPrice,
+      'customerPrice': customerPrice,
+      'discountPercent': discountPercent,
+      'hasPriceList': hasPriceList,
       'vatCode': vatCode,
       'hold': hold,
       'rangeCode': rangeCode,
@@ -138,6 +157,7 @@ class Product {
       'photo': photo?.toList(),
       'freeProduct': freeProduct,
       'colisageCarton': colisageCarton,
+      'quantiteStock': quantiteEnStock, 
     };
   }
 
@@ -150,12 +170,54 @@ class Product {
   }
   
   String get formattedPrice => '${salesPrice.toStringAsFixed(2)} €';
+
+  // ✅HELPERS TARIFICATION CLIENT
+
+  /// Prix réel à payer (client ou catalogue)
+  double get effectivePrice => customerPrice ?? salesPrice;
+
+  /// Prix formaté pour affichage
+  String get formattedEffectivePrice => '${effectivePrice.toStringAsFixed(2)} €';
+
+  /// Vérifier s'il y a une remise à afficher
+  bool get hasDiscount => hasPriceList && 
+                          customerPrice != null && 
+                          customerPrice! < salesPrice &&
+                          discountPercent != null;
+
+  /// Formater le % de remise pour affichage
+  String get formattedDiscount => hasDiscount 
+      ? '-${discountPercent!.toStringAsFixed(1)}%'
+      : '';
+
+  /// Prix catalogue formaté (pour affichage barré)
+  String get formattedCatalogPrice => formattedPrice;
   
   bool get hasPhoto => photo != null && photo!.isNotEmpty;
   
   bool get isAvailable => !hold;
   
   String get categoryDisplay => productCategoryCode;
+
+    /// 📦 NOUVEAUX HELPERS STOCK - Vérifier si le stock est disponible (pour vendeurs conventionnels)
+  bool get hasStockInfo => quantiteEnStock != null;
+
+  /// 📦 Stock disponible (0 si pas d'info)
+  int get stockDisponible => quantiteEnStock ?? 0;
+
+  /// ⚠️ Stock faible (< 5 unités)
+  bool get isLowStock => hasStockInfo && stockDisponible > 0 && stockDisponible < 5;
+
+  /// 🔴 Stock épuisé
+  bool get isOutOfStock => hasStockInfo && stockDisponible <= 0;
+
+  /// 📊 Libellé du stock pour affichage
+  String get stockLabel {
+    if (!hasStockInfo) return '';
+    if (isOutOfStock) return 'Rupture de stock';
+    if (isLowStock) return 'Stock faible : $stockDisponible';
+    return 'Stock : $stockDisponible';
+  }
   
   /// 🔍 Pour la recherche (utilisé dans ProductService)
   bool matchesSearch(String query) {
@@ -165,4 +227,7 @@ class Product {
            brand.toLowerCase().contains(searchLower) ||
            (barcode?.toLowerCase().contains(searchLower) ?? false);
   }
+
+
+
 }

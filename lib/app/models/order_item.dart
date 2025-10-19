@@ -100,7 +100,7 @@ class OrderItem {
       productId: product.id,
       product: product,
       quantity: quantity,
-      price: product.salesPrice,
+      price: product.effectivePrice,
       designation: product.description,
       vat: product.vatCode,
       discount: 0.0,

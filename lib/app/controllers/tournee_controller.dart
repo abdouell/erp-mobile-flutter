@@ -1,3 +1,4 @@
+import 'package:erp_mobile/app/services/location_service.dart';
 import 'package:get/get.dart';
 import '../models/tournee.dart';
 import '../models/vendeur.dart';
@@ -100,6 +101,77 @@ void goToClients() {
     });
   } else {
     Get.snackbar('Erreur', 'Aucune tournée sélectionnée');
+  }
+}
+
+// ========================================
+// MÉTHODES MÉTIER POUR LA GESTION DES VISITES
+// ========================================
+
+/// Check-in client : démarrer une visite
+Future<void> checkinClient(int clientTourneeId) async {
+  try {
+    // Récupérer position
+    final locationService = Get.find<LocationService>();
+    final position = await locationService.getCurrentPosition();
+    
+    // Appel API
+    await _tourneeService.checkinCustomer(
+      clientTourneeId,
+      latitude: position?.latitude,
+      longitude: position?.longitude,
+    );
+    
+    // Recharger automatiquement la tournée
+    await refresh();
+    
+  } catch (e) {
+    print('Erreur check-in: $e');
+    rethrow;
+  }
+}
+
+/// Checkout sans commande : terminer une visite sans commande
+Future<void> checkoutWithoutOrder(
+  int clientTourneeId,
+  String motif,
+  String? note,
+) async {
+  try {
+    // Récupérer position
+    final locationService = Get.find<LocationService>();
+    final position = await locationService.getCurrentPosition();
+    
+    // Appel API
+    await _tourneeService.checkoutCustomerWithoutOrder(
+      clientTourneeId,
+      motif,
+      note,
+      latitude: position?.latitude,
+      longitude: position?.longitude,
+    );
+    
+    // Recharger automatiquement la tournée
+    await refresh();
+    
+  } catch (e) {
+    print('Erreur checkout sans commande: $e');
+    rethrow;
+  }
+}
+
+/// Clôturer la tournée
+Future<void> cloturerTournee(int tourneeId) async {
+  try {
+    // Appel API
+    await _tourneeService.clotureTournee(tourneeId);
+    
+    // Recharger automatiquement la tournée
+    await refresh();
+    
+  } catch (e) {
+    print('Erreur clôture tournée: $e');
+    rethrow;
   }
 }
 

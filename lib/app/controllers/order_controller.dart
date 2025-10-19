@@ -1,3 +1,4 @@
+import 'package:erp_mobile/app/controllers/tournee_controller.dart';
 import 'package:erp_mobile/app/services/location_service.dart';
 import 'package:erp_mobile/app/services/tournee_service.dart';
 import 'package:flutter/material.dart';
@@ -97,44 +98,154 @@ class OrderController extends GetxController {
   
   /// 📦 CHARGEMENT DONNÉES INITIALES
   Future<void> _loadInitialData() async {
-    await Future.wait([
-      _loadProducts(),
-      _loadCategories(),
-    ]);
+      // ✅ Charger les produits d'abord (filtrés selon vendeur)
+      await _loadProducts();
+      
+      // ✅ Puis extraire les catégories des produits chargés
+      await _loadCategories();
   }
   
-  /// 📦 CHARGER PRODUITS
-  Future<void> _loadProducts() async {
-    try {
-      isLoadingProducts.value = true;
-      hasError.value = false;
-      
-      final products = await _productService.getAllProducts();
-      allProducts.value = products;
-      filteredProducts.value = products;
-      
-      print('✅ ${products.length} produits chargés');
-      
-    } catch (e) {
-      _handleError('Erreur chargement produits', e);
-    } finally {
-      isLoadingProducts.value = false;
+/// 📦 CHARGER PRODUITS - AVEC TARIFICATION CLIENT
+Future<void> _loadProducts() async {
+  try {
+    isLoadingProducts.value = true;
+    hasError.value = false;
+    
+    print('📦 Chargement produits...');
+    
+    // Vérifier qu'on a un client sélectionné
+    if (selectedClient.value == null) {
+      throw Exception('Aucun client sélectionné');
     }
-  }
-  
-  /// 📂 CHARGER CATÉGORIES
-  Future<void> _loadCategories() async {
-    try {
-      final categoryList = await _productService.getAvailableCategories();
-      categories.value = categoryList;
-      
-      print('✅ ${categoryList.length} catégories chargées');
-      
-    } catch (e) {
-      print('⚠️ Erreur chargement catégories: $e');
-      // Non bloquant, on continue sans catégories
+    
+    final customerId = selectedClient.value!.customerId;
+    print('👤 Chargement produits pour client ID: $customerId');
+    
+    // ✅ RÉCUPÉRER LE VENDEUR pour savoir si filtrage par emplacement nécessaire
+    final tourneeController = Get.find<TourneeController>();
+    final vendeur = tourneeController.vendeur.value;
+    
+    if (vendeur == null) {
+      throw Exception('Informations vendeur non disponibles');
     }
+    
+    print('👤 Vendeur récupéré: ${vendeur.nomComplet} - Type: ${vendeur.typeVendeur}');
+    
+    List<Product> products;
+    
+    // ✅ LOGIQUE CONDITIONNELLE SELON TYPE VENDEUR
+    if (vendeur.isConventionnel && vendeur.hasEmplacement) {
+      // Vendeur CONVENTIONNEL → Produits en stock avec tarification client
+      print('🚚 Vendeur CONVENTIONNEL détecté - Chargement stock emplacement ${vendeur.emplacementCode}');
+      
+      // Récupérer produits avec stock
+      final stockProducts = await _productService.getProductsByEmplacement(vendeur.emplacementCode!);
+      
+      // Récupérer tarification client
+      final pricedProducts = await _productService.getProductsForCustomer(customerId);
+      
+      // Fusionner : garder seulement les produits en stock, avec leur prix client
+      products = stockProducts.map((stockProduct) {
+        // Chercher le même produit dans la liste avec tarification
+        final pricedProduct = pricedProducts.firstWhereOrNull(
+          (p) => p.productCode == stockProduct.productCode
+        );
+        
+        // Si trouvé avec tarification, utiliser celui-là mais garder le stock
+        if (pricedProduct != null) {
+          return Product(
+            id: pricedProduct.id,
+            productCode: pricedProduct.productCode,
+            description: pricedProduct.description,
+            rank: pricedProduct.rank,
+            companyCode: pricedProduct.companyCode,
+            productPageCode: pricedProduct.productPageCode,
+            productCategoryCode: pricedProduct.productCategoryCode,
+            productTypeCode: pricedProduct.productTypeCode,
+            supplierCode: pricedProduct.supplierCode,
+            salesPrice: pricedProduct.salesPrice,
+            // ✅ Prix client et remise
+            customerPrice: pricedProduct.customerPrice,
+            discountPercent: pricedProduct.discountPercent,
+            hasPriceList: pricedProduct.hasPriceList,
+            vatCode: pricedProduct.vatCode,
+            hold: pricedProduct.hold,
+            rangeCode: pricedProduct.rangeCode,
+            familyCode: pricedProduct.familyCode,
+            brand: pricedProduct.brand,
+            activityCode: pricedProduct.activityCode,
+            managementUnit: pricedProduct.managementUnit,
+            stockMin: pricedProduct.stockMin,
+            // ✅ Info stock du produit d'origine
+            quantiteEnStock: stockProduct.quantiteEnStock,
+            longDescription: pricedProduct.longDescription,
+            barcode: pricedProduct.barcode,
+            page: pricedProduct.page,
+            fournisseur: pricedProduct.fournisseur,
+            discount: pricedProduct.discount,
+            salesPacking: pricedProduct.salesPacking,
+            weight: pricedProduct.weight,
+            volume: pricedProduct.volume,
+            weightManaged: pricedProduct.weightManaged,
+            weightPrecision: pricedProduct.weightPrecision,
+            photo: pricedProduct.photo,
+            freeProduct: pricedProduct.freeProduct,
+            colisageCarton: pricedProduct.colisageCarton,
+          );
+        }
+        
+        // Sinon, utiliser le produit en stock tel quel
+        return stockProduct;
+      }).toList();
+      
+      print('✅ ${products.length} produits en stock avec tarification client');
+      
+    } else {
+      // Vendeur PREVENTE ou LIVREUR → Tous les produits avec tarification client
+      print('📋 Vendeur ${vendeur.typeVendeur} - Chargement de tous les produits avec tarification');
+      products = await _productService.getProductsForCustomer(customerId);
+      print('✅ ${products.length} produits chargés avec tarification client');
+    }
+    
+    allProducts.value = products;
+    filteredProducts.value = products;
+    
+    // Compter les produits avec remise
+    final withDiscount = products.where((p) => p.hasDiscount).length;
+    print('💰 Produits avec remise client: $withDiscount');
+    print('✅ Produits chargés avec succès');
+    
+  } catch (e) {
+    print('❌ Erreur chargement produits: $e');
+    _handleError('Erreur chargement produits', e);
+  } finally {
+    isLoadingProducts.value = false;
   }
+}
+
+/// 📂 CHARGER CATÉGORIES - À PARTIR DES PRODUITS FILTRÉS
+Future<void> _loadCategories() async {
+  try {
+    print('📂 Extraction des catégories des produits chargés...');
+    
+    // ✅ Extraire les catégories UNIQUEMENT des produits filtrés (allProducts)
+    final categorySet = allProducts
+        .map((product) => product.productCategoryCode)
+        .toSet(); // Utiliser Set pour éliminer les doublons
+    
+    final categoryList = categorySet.toList();
+    categoryList.sort(); // Tri alphabétique
+    
+    categories.value = categoryList;
+    
+    print('✅ ${categoryList.length} catégories extraites des ${allProducts.length} produits');
+    
+  } catch (e) {
+    print('⚠️ Erreur extraction catégories: $e');
+    // Non bloquant, on continue sans catégories
+    categories.value = [];
+  }
+}
   
   /// 🔍 RECHERCHE PRODUITS
   void _performSearch(String query) {
@@ -164,48 +275,80 @@ class OrderController extends GetxController {
     _performSearch(searchQuery.value); // Re-appliquer la recherche avec le nouveau filtre
   }
   
-  /// 🛒 AJOUTER AU PANIER
-  void addToCart(Product product, {int quantity = 1}) {
-    try {
-      print('🛒 Ajout panier: ${product.displayName} x$quantity');
+/// 🛒 AJOUTER AU PANIER - AVEC VALIDATION STOCK
+void addToCart(Product product, {int quantity = 1}) {
+  try {
+    print('🛒 Ajout panier: ${product.displayName} x$quantity');
+    
+    if (!product.isAvailable) {
+      Get.snackbar('Produit indisponible', '${product.displayName} n\'est pas disponible');
+      return;
+    }
+    
+    // ✅ NOUVEAU : Vérifier le stock avant d'ajouter
+    final existingItem = cartItems.firstWhereOrNull((item) => item.productId == product.id);
+    final currentQuantityInCart = existingItem?.quantity ?? 0;
+    final newTotalQuantity = currentQuantityInCart + quantity;
+    
+    // Vérifier si stock suffisant
+    if (!_isStockAvailable(product, newTotalQuantity)) {
+      final maxAvailable = _getMaxAvailableQuantity(product);
+      final canStillAdd = maxAvailable - currentQuantityInCart;
       
-      if (!product.isAvailable) {
-        Get.snackbar('Produit indisponible', '${product.displayName} n\'est pas disponible');
-        return;
-      }
-      
-      final existingIndex = cartItems.indexWhere((item) => item.productId == product.id);
-      
-      if (existingIndex >= 0) {
-        // Produit existe -> augmenter quantité
-        final existingItem = cartItems[existingIndex];
-        final newQuantity = existingItem.quantity + quantity;
-        cartItems[existingIndex] = existingItem.updateQuantity(newQuantity);
-        
+      if (canStillAdd <= 0) {
         Get.snackbar(
-          'Quantité mise à jour',
-          '${product.displayName}: ${existingItem.quantity} → $newQuantity',
-          duration: Duration(seconds: 1),
+          'Stock insuffisant',
+          product.isOutOfStock 
+            ? '${product.displayName} est en rupture de stock'
+            : 'Stock maximum atteint (${product.stockDisponible} disponibles)',
+          backgroundColor: Get.theme.colorScheme.error,
+          colorText: Get.theme.colorScheme.onError,
+          duration: Duration(seconds: 3),
         );
       } else {
-        // Nouveau produit
-        final newItem = OrderItem.fromProduct(product, quantity);
-        cartItems.add(newItem);
-        
         Get.snackbar(
-          'Produit ajouté',
-          '${product.displayName} x$quantity',
-          duration: Duration(seconds: 1),
+          'Stock limité',
+          'Vous pouvez ajouter maximum $canStillAdd unité(s) de plus\n(Stock disponible: ${product.stockDisponible})',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: Duration(seconds: 3),
         );
       }
-      
-      print('✅ Panier: ${cartItems.length} articles, total: ${cartTotal.value}€');
-      
-    } catch (e) {
-      _handleError('Erreur ajout panier', e);
+      return;
     }
+    
+    final existingIndex = cartItems.indexWhere((item) => item.productId == product.id);
+    
+    if (existingIndex >= 0) {
+      // Produit existe -> augmenter quantité
+      final existingItem = cartItems[existingIndex];
+      final newQuantity = existingItem.quantity + quantity;
+      cartItems[existingIndex] = existingItem.updateQuantity(newQuantity);
+      
+      Get.snackbar(
+        'Quantité mise à jour',
+        '${product.displayName}: ${existingItem.quantity} → $newQuantity',
+        duration: Duration(seconds: 1),
+      );
+    } else {
+      // Nouveau produit
+      final newItem = OrderItem.fromProduct(product, quantity);
+      cartItems.add(newItem);
+      
+      Get.snackbar(
+        'Produit ajouté',
+        '${product.displayName} x$quantity',
+        duration: Duration(seconds: 1),
+      );
+    }
+    
+    print('✅ Panier: ${cartItems.length} articles, total: ${cartTotal.value}€');
+    
+  } catch (e) {
+    _handleError('Erreur ajout panier', e);
   }
-  
+}
+
   /// 🛒 METTRE À JOUR QUANTITÉ
   void updateCartItemQuantity(int productId, int newQuantity) {
     try {
@@ -340,36 +483,15 @@ Future<void> validateOrder() async {
     
     print('✅ Sauvegarde serveur réussie: $savedOrder');
     
-    // 2. ✅ NOUVEAU : CHECK-OUT AUTOMATIQUE AVEC COMMANDE
-    if (selectedClient.value != null && selectedClient.value!.id != null) {
-      print('🔄 Check-out automatique du client...');
-      
-      try {
-        final tourneeService = Get.find<TourneeService>();
-        await tourneeService.checkoutCustomerWithOrder(
-          selectedClient.value!.id!,
-          latitude: latitude,
-          longitude: longitude,
-        );
-        
-        print('✅ Check-out automatique effectué');
-        
-      } catch (checkoutError) {
-        print('⚠️ Erreur check-out automatique: $checkoutError');
-        // Ne pas faire échouer la validation pour un problème de check-out
-        // La commande est sauvée, on continue
-      }
-    }
-    
-    // 3. MISE À JOUR DE L'ÉTAT LOCAL
+    // 2. MISE À JOUR DE L'ÉTAT LOCAL
     currentOrder.value = savedOrder;
     print('✅ Commande locale mise à jour avec ID: ${savedOrder.id}');
     
-    // 4. VIDER LE PANIER
+    // 3. VIDER LE PANIER
     print('🗑️ Vidage du panier après succès...');
     clearCart();
     
-    // 5. MESSAGE DE SUCCÈS
+    // 4. MESSAGE DE SUCCÈS
     Get.snackbar(
       'Commande validée ! 🎉',
       'Commande #${savedOrder.id} validée avec succès',
@@ -379,7 +501,7 @@ Future<void> validateOrder() async {
       duration: Duration(seconds: 3),
     );
     
-    // 6. NAVIGATION VERS CONFIRMATION
+    // 5. NAVIGATION VERS CONFIRMATION
     print('🧭 Navigation vers confirmation...');
     
     // ✅ FERMER LE BOTTOM SHEET AVANT LA NAVIGATION
@@ -391,59 +513,35 @@ Future<void> validateOrder() async {
       'order': savedOrder,
       'client': selectedClient.value,
     });
+
+    // ✅ NOUVEAU : Rafraîchir le TourneeController
+    final tourneeController = Get.find<TourneeController>();
+    await tourneeController.refresh();
     
     print('✅ === FIN VALIDATION COMMANDE ===');
     
   } catch (e) {
-    print('❌ Erreur validation: $e');
-    
-    // Messages d'erreur détaillés selon le type
-    String errorTitle;
-    String errorMessage;
-    
-    if (e.toString().contains('serveur a retourné une réponse vide')) {
-      errorTitle = 'Erreur de sauvegarde';
-      errorMessage = 'Le serveur n\'a pas confirmé la sauvegarde. Vos données sont conservées, vous pouvez réessayer.';
-    } else if (e.toString().contains('Données de commande invalides')) {
-      errorTitle = 'Données invalides';
-      errorMessage = 'Les informations de la commande sont incorrectes. Vérifiez votre saisie et réessayez.';
-    } else if (e.toString().contains('Erreur serveur interne') || e.toString().contains('Code: 500')) {
-      errorTitle = 'Problème serveur';
-      errorMessage = 'Le serveur rencontre un problème technique. Votre commande est conservée, réessayez dans quelques minutes.';
-    } else if (e.toString().contains('temporairement indisponible') || e.toString().contains('Code: 503')) {
-      errorTitle = 'Service indisponible';
-      errorMessage = 'Le service est temporairement indisponible. Votre commande est conservée, réessayez plus tard.';
-    } else if (e.toString().contains('Accès refusé') || e.toString().contains('Code: 403')) {
-      errorTitle = 'Accès refusé';
-      errorMessage = 'Vous n\'avez pas les permissions nécessaires. Contactez votre administrateur.';
-    } else if (e.toString().contains('communication') || e.toString().contains('network')) {
-      errorTitle = 'Problème de connexion';
-      errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.';
-    } else {
-      errorTitle = 'Erreur de validation';
-      errorMessage = 'Une erreur s\'est produite. Votre commande est conservée, vous pouvez réessayer.';
-    }
-    
-    // Snackbar d'erreur
-    Get.snackbar(
-      errorTitle,
-      errorMessage,
-      backgroundColor: Colors.red.shade600,
-      colorText: Colors.white,
-      icon: Icon(Icons.error_outline, color: Colors.white),
-      duration: Duration(seconds: 6),
-      snackPosition: SnackPosition.TOP,
-      margin: EdgeInsets.all(16),
-      borderRadius: 8,
-      shouldIconPulse: true,
-    );
-    
-    // IMPORTANT: NE PAS vider le panier en cas d'erreur
-    // L'utilisateur garde sa commande et peut réessayer
-    
-  } finally {
-    isValidatingOrder.value = false;
-  }
+  print('❌ Erreur validation: $e');
+  
+  // Le service gère déjà l'extraction du message serveur
+  final errorMessage = e.toString().replaceAll('Exception: ', '');
+  
+  Get.snackbar(
+    'Erreur de validation',
+    errorMessage,
+    backgroundColor: Colors.red.shade600,
+    colorText: Colors.white,
+    icon: Icon(Icons.error_outline, color: Colors.white),
+    duration: Duration(seconds: 5),
+    snackPosition: SnackPosition.TOP,
+    margin: EdgeInsets.all(16),
+    borderRadius: 8,
+  );
+  
+} finally {
+  isValidatingOrder.value = false;
+}
+
 }
 
 /// 💬 DIALOGUE VALIDATION AVEC COMMENTAIRE
@@ -664,5 +762,24 @@ void clearCart() {
     
     print('❌ $title: $error');
   }
+
+  /// 📦 HELPER : Vérifier si la quantité demandée est disponible en stock
+bool _isStockAvailable(Product product, int requestedQuantity) {
+  // Si pas d'info de stock (vendeur PREVENTE/LIVREUR), toujours disponible
+  if (!product.hasStockInfo) {
+    return true;
+  }
+  
+  // Pour vendeur CONVENTIONNEL avec info stock
+  return requestedQuantity <= product.stockDisponible;
+}
+
+/// 📦 HELPER : Obtenir la quantité maximale disponible
+int _getMaxAvailableQuantity(Product product) {
+  if (!product.hasStockInfo) {
+    return 999; // Pas de limite pour PREVENTE/LIVREUR
+  }
+  return product.stockDisponible;
+}
   
 }

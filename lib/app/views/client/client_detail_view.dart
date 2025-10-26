@@ -28,7 +28,7 @@ class ClientDetailView extends GetView<TourneeController> {
       body: Obx(() {
         // Récupérer le client mis à jour depuis le controller
         final updatedClient = controller.tourneeToday.value?.clients
-            .firstWhere((c) => c.id == client.id, orElse: () => client);
+            .firstWhere((c) => c.id == client.id, orElse: () => client) ?? client;
 
         return Column(
           children: [
@@ -670,3 +670,4 @@ class ClientDetailView extends GetView<TourneeController> {
     }
   }
 }
+

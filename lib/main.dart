@@ -2,6 +2,7 @@ import 'package:erp_mobile/app/controllers/order_details_controller.dart';
 import 'package:erp_mobile/app/controllers/order_list_controller.dart';
 import 'package:erp_mobile/app/services/customer_service.dart';
 import 'package:erp_mobile/app/views/client/clients_view.dart';
+import 'package:erp_mobile/app/views/client/client_detail_view.dart';
 import 'package:erp_mobile/app/views/order/order_details_view.dart';
 import 'package:erp_mobile/app/views/order/order_list_view.dart';
 import 'package:flutter/material.dart';
@@ -91,6 +92,14 @@ class MyApp extends StatelessWidget {
         GetPage(name: '/', page: () => LoginView()),
         GetPage(name: '/tournee', page: () => TourneeView()),
         GetPage(name: '/clients', page: () => ClientsView()),
+        
+        // ✅ Route détail client
+        GetPage(
+          name: '/client-details',
+          page: () => ClientDetailView(),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
         
         // ✅ Nouvelles routes commandes
         GetPage(

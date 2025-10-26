@@ -420,6 +420,14 @@ List<Widget> _buildClientActionButtons(ClientTournee client) {
           title: Text('Démarrer la visite'),
           onTap: () => _handleCheckin(client),
         ),
+        ListTile(
+          leading: Icon(Icons.info_outline, color: Colors.blue),
+          title: Text('Voir les détails'),
+          onTap: () {
+            Get.back();
+            Get.toNamed('/client-details', arguments: {'client': client});
+          },
+        ),
       ];
       
     case StatutVisite.VISITE_EN_COURS:
@@ -433,6 +441,14 @@ List<Widget> _buildClientActionButtons(ClientTournee client) {
           leading: Icon(Icons.cancel, color: Colors.orange),
           title: Text('Terminer sans commande'),
           onTap: () => _handleCheckoutNoSale(client),
+        ),
+        ListTile(
+          leading: Icon(Icons.info_outline, color: Colors.grey),
+          title: Text('Voir les détails'),
+          onTap: () {
+            Get.back();
+            Get.toNamed('/client-details', arguments: {'client': client});
+          },
         ),
       ];
       
@@ -455,6 +471,14 @@ List<Widget> _buildClientActionButtons(ClientTournee client) {
             _callClient(client);
           },
         ),
+        ListTile(
+          leading: Icon(Icons.info_outline, color: Colors.blue),
+          title: Text('Voir les détails'),
+          onTap: () {
+            Get.back();
+            Get.toNamed('/client-details', arguments: {'client': client});
+          },
+        ),
       ];
   }
 }
@@ -466,7 +490,9 @@ void _handleCheckin(ClientTournee client) async {
     Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Check-in...')])), barrierDismissible: false);
     await controller.checkinClient(client.id!);
     Get.back();
-    Get.snackbar('Visite démarrée', 'Check-in effectué avec succès', backgroundColor: Colors.green, colorText: Colors.white);
+    
+    // ✅ Naviguer vers la page de détail client après le démarrage
+    Get.toNamed('/client-details', arguments: {'client': client});
   } catch (e) {
     Get.back();
     Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);

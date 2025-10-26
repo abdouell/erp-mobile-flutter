@@ -315,8 +315,14 @@ Future<void> _performClotureVisite(ClientTournee client, String motif, String? n
 
     // Appel au contrôleur (qui gère position + API + refresh)
     final tourneeController = Get.find<TourneeController>();
+    
+    // Vérifier qu'il y a une visite en cours
+    if (client.currentVisite == null || client.currentVisite!.id == null) {
+      throw Exception('Aucune visite en cours pour ce client');
+    }
+
     await tourneeController.checkoutWithoutOrder(
-      client.id!,
+      client.currentVisite!.id!,  // ✅ visiteId
       motif,
       note,
     );

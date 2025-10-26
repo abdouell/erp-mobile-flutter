@@ -7,14 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../models/tournee.dart';
 
-const List<Map<String, String>> MOTIFS_VISITE = [
-  {'code': 'VISITE', 'libelle': 'Visite / Présentation'},
-  {'code': 'RELANCE', 'libelle': 'Relance'},
-  {'code': 'ABSENT', 'libelle': 'Absent / Fermé'},
-  {'code': 'PAS_DE_BESOIN', 'libelle': 'Pas de besoin'},
-  {'code': 'AUTRE', 'libelle': 'Autre'},
-];
-
 class ClientsView extends GetView<TourneeController> {
   @override
   Widget build(BuildContext context) {
@@ -183,31 +175,20 @@ class ClientsView extends GetView<TourneeController> {
           ],
         ),
         trailing: _buildClientActions(clientTournee),
-        onTap: () {
-          if (clientTournee.statutVisite == StatutVisite.NON_VISITE || clientTournee.statutVisite == StatutVisite.VISITE_EN_COURS) {
-            _createOrderForClient(clientTournee);
-          } else {
-            Get.snackbar('Visite terminée', 'Ce client a déjà été visité', backgroundColor: Colors.blue, colorText: Colors.white);
-          }
-        },
+        onTap: () => _showClientActions(clientTournee),
       ),
     );
   }
 
   Widget _buildStatutChip(StatutVisite statut) {
     return Chip(
-      label: Text(statut.label, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+      label: Text(statut.label, style: TextStyle(color: Colors.white, fontSize: 11)),
       backgroundColor: statut.color,
+      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    return hours > 0 ? '${hours}h ${minutes}min' : '${minutes}min';
-  }
-    
   Widget _buildClientActions(ClientTournee clientTournee) {
     switch (clientTournee.statutVisite) {
       case StatutVisite.NON_VISITE:
@@ -230,43 +211,6 @@ class ClientsView extends GetView<TourneeController> {
     if (action == 'history') _showOrderHistory(client);
     if (action == 'call') _callClient(client);
   }
-
-void _createOrderForClient(ClientTournee client) async {
-  if (client.customerId <= 0) {
-    Get.snackbar('Erreur', 'Client invalide: ID manquant');
-    return;
-  }
-
-  if (client.statutVisite == StatutVisite.NON_VISITE) {
-    try {
-      Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Démarrage de la visite...')])), barrierDismissible: false);
-
-      await controller.checkinClient(client.id!);
-
-      Get.back();
-      
-      // ✅ Récupérer le client mis à jour depuis le contrôleur
-      final updatedClient = controller.tourneeToday.value?.clients.firstWhere((c) => c.id == client.id);
-      
-      if (updatedClient == null) {
-        Get.snackbar('Erreur', 'Impossible de récupérer le client mis à jour');
-        return;
-      }
-      
-      Get.snackbar('Visite démarrée', 'Visite de ${client.customerName} en cours', backgroundColor: Colors.orange, colorText: Colors.white, duration: Duration(seconds: 2));
-      
-      await Get.toNamed('/order-create', arguments: {'client': updatedClient});
-      
-    } catch (e) {
-      if (Get.isDialogOpen == true) Get.back();
-      Get.snackbar('Erreur check-in', 'Impossible de démarrer la visite: $e', backgroundColor: Colors.red, colorText: Colors.white);
-      return;
-    }
-  } else {
-    // Client déjà EN_COURS, on le passe tel quel
-    await Get.toNamed('/order-create', arguments: {'client': client});
-  }
-}
 
   void _showOrderHistory(ClientTournee client) {
     Get.bottomSheet(
@@ -346,6 +290,17 @@ void _createOrderForClient(ClientTournee client) async {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}min';
+    } else {
+      return '${minutes}min';
+    }
+  }
+
   Widget _buildClotureTourneeButton(Tournee tournee) {
     return Container(
       padding: EdgeInsets.all(16),
@@ -407,4 +362,151 @@ void _createOrderForClient(ClientTournee client) async {
       Get.snackbar('Erreur', 'Impossible de clôturer la tournée: $e', backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
+
+  void _showClientActions(ClientTournee client) {
+  Get.bottomSheet(
+    Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: client.statutVisite.color,
+                  child: Icon(client.statutVisite.icon, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(client.customerName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(client.customerAddress, style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                IconButton(onPressed: () => Get.back(), icon: Icon(Icons.close)),
+              ],
+            ),
+          ),
+          
+          // Actions selon le statut
+          ...(_buildClientActionButtons(client)),
+          
+          SizedBox(height: 16),
+        ],
+      ),
+    ),
+    isScrollControlled: true,
+  );
+}
+
+List<Widget> _buildClientActionButtons(ClientTournee client) {
+  switch (client.statutVisite) {
+    case StatutVisite.NON_VISITE:
+      return [
+        ListTile(
+          leading: Icon(Icons.play_circle, color: Colors.green),
+          title: Text('Démarrer la visite'),
+          onTap: () => _handleCheckin(client),
+        ),
+      ];
+      
+    case StatutVisite.VISITE_EN_COURS:
+      return [
+        ListTile(
+          leading: Icon(Icons.shopping_cart, color: Colors.blue),
+          title: Text('Créer une commande'),
+          onTap: () => _handleCreateOrder(client),
+        ),
+        ListTile(
+          leading: Icon(Icons.cancel, color: Colors.orange),
+          title: Text('Terminer sans commande'),
+          onTap: () => _handleCheckoutNoSale(client),
+        ),
+      ];
+      
+    case StatutVisite.VISITE_TERMINEE:
+    case StatutVisite.COMMANDE_CREEE:
+      return [
+        ListTile(
+          leading: Icon(Icons.history, color: Colors.purple),
+          title: Text('Historique commandes'),
+          onTap: () {
+            Get.back();
+            _showOrderHistory(client);
+          },
+        ),
+        ListTile(
+          leading: Icon(Icons.phone, color: Colors.orange),
+          title: Text('Appeler le client'),
+          onTap: () {
+            Get.back();
+            _callClient(client);
+          },
+        ),
+      ];
+  }
+}
+
+// Check-in
+void _handleCheckin(ClientTournee client) async {
+  Get.back();
+  try {
+    Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Check-in...')])), barrierDismissible: false);
+    await controller.checkinClient(client.id!);
+    Get.back();
+    Get.snackbar('Visite démarrée', 'Check-in effectué avec succès', backgroundColor: Colors.green, colorText: Colors.white);
+  } catch (e) {
+    Get.back();
+    Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+  }
+}
+
+// Créer commande
+void _handleCreateOrder(ClientTournee client) {
+  Get.back();
+  Get.toNamed('/order-create', arguments: {'client': client});
+}
+
+// Checkout sans vente
+void _handleCheckoutNoSale(ClientTournee client) {
+  Get.back();
+  // Dialog pour motif
+  Get.dialog(AlertDialog(
+    title: Text('Visite sans commande'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(title: Text('Client absent'), onTap: () => _executeCheckoutNoSale(client, 'CLIENT_ABSENT')),
+        ListTile(title: Text('Pas de besoin'), onTap: () => _executeCheckoutNoSale(client, 'PAS_DE_BESOIN')),
+        ListTile(title: Text('Fermé'), onTap: () => _executeCheckoutNoSale(client, 'FERME')),
+      ],
+    ),
+  ));
+}
+
+void _executeCheckoutNoSale(ClientTournee client, String motif) async {
+  Get.back();
+  try {
+    Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Enregistrement...')])), barrierDismissible: false);
+    await controller.checkoutWithoutOrder(client.id!, motif, null);
+    Get.back();
+    Get.snackbar('Visite terminée', 'Check-out effectué', backgroundColor: Colors.blue, colorText: Colors.white);
+  } catch (e) {
+    Get.back();
+    Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+  }
+}
+
 }

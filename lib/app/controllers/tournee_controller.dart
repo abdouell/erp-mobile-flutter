@@ -24,25 +24,28 @@ class TourneeController extends GetxController {
   void onInit() {
     super.onInit();
    
-     // ✅ Attendre que l'utilisateur soit authentifié
-  ever(_authController.isAuthenticated, (authenticated) {
-    if (authenticated) {
-      print('🔑 Utilisateur authentifié détecté, chargement tournée...');
-      loadTourneeData();
-    }
-  });
-  
-  // ✅ Si déjà authentifié au démarrage
-  if (_authController.isAuthenticated.value) {
-    Future.delayed(Duration(milliseconds: 300), () {
-      print('🔑 Déjà authentifié, chargement tournée...');
-      loadTourneeData();
+    // ✅ Attendre que l'utilisateur soit authentifié
+    ever(_authController.isAuthenticated, (authenticated) {
+      if (authenticated) {
+        print('🔑 Utilisateur authentifié détecté, chargement tournée...');
+        loadTourneeData();
+      }
     });
-  }
-
+    
+    // ✅ Si déjà authentifié au démarrage
+    if (_authController.isAuthenticated.value) {
+      Future.delayed(Duration(milliseconds: 300), () {
+        print('🔑 Déjà authentifié, chargement tournée...');
+        loadTourneeData();
+      });
+    }
   }
   
-  // Charger les données de tournée
+  // ========================================
+  // CHARGEMENT DES DONNÉES
+  // ========================================
+  
+  /// Charger les données de tournée
   Future<void> loadTourneeData() async {
     try {
       isLoading.value = true;
@@ -70,6 +73,9 @@ class TourneeController extends GetxController {
       
       if (tournee != null) {
         print('Tournée du jour: ${tournee.id} - ${tournee.statut}');
+        print('  → ${tournee.nombreClients} clients');
+        print('  → ${tournee.nombreTotalVisites} visites');
+        print('  → ${tournee.nombreCommandes} commandes');
       } else {
         print('Pas de tournée aujourd\'hui');
       }
@@ -84,95 +90,189 @@ class TourneeController extends GetxController {
     }
   }
   
-  // Rafraîchir les données
+  /// Rafraîchir les données
   Future<void> refresh() async {
     await loadTourneeData();
   }
   
-// Naviguer vers la liste des clients
-void goToClients() {
-  if (tourneeToday.value != null) {
-    print('Navigation vers clients de la tournée: ${tourneeToday.value!.id}');
-    
-    // ✅ Navigation avec données de la tournée
-    Get.toNamed('/clients', arguments: {
-      'tournee': tourneeToday.value,
-      'vendeur': vendeur.value,
-    });
-  } else {
-    Get.snackbar('Erreur', 'Aucune tournée sélectionnée');
+  // ========================================
+  // NAVIGATION
+  // ========================================
+  
+  /// Naviguer vers la liste des clients
+  void goToClients() {
+    if (tourneeToday.value != null) {
+      print('Navigation vers clients de la tournée: ${tourneeToday.value!.id}');
+      
+      // ✅ Navigation avec données de la tournée
+      Get.toNamed('/clients', arguments: {
+        'tournee': tourneeToday.value,
+        'vendeur': vendeur.value,
+      });
+    } else {
+      Get.snackbar('Erreur', 'Aucune tournée sélectionnée');
+    }
   }
-}
 
-// ========================================
-// MÉTHODES MÉTIER POUR LA GESTION DES VISITES
-// ========================================
+  // ========================================
+  // MÉTHODES MÉTIER POUR LA GESTION DES VISITES
+  // ========================================
 
-/// Check-in client : démarrer une visite
-Future<void> checkinClient(int clientTourneeId) async {
-  try {
-    // Récupérer position
-    final locationService = Get.find<LocationService>();
-    final position = await locationService.getCurrentPosition();
-    
-    // Appel API
-    await _tourneeService.checkinCustomer(
-      clientTourneeId,
-      latitude: position?.latitude,
-      longitude: position?.longitude,
-    );
-    
-    // Recharger automatiquement la tournée
-    await refresh();
-    
-  } catch (e) {
-    print('Erreur check-in: $e');
-    rethrow;
+  /// Check-in client : démarrer une nouvelle visite pour un client
+  /// Crée une nouvelle visite en base et fait le check-in
+  /// Retourne le visiteId créé via VisitStatusResponse
+  Future<void> checkinClient(int clientTourneeId) async {
+    try {
+      print('🔄 Check-in client $clientTourneeId');
+      
+      // Récupérer position GPS
+      final locationService = Get.find<LocationService>();
+      final position = await locationService.getCurrentPosition();
+      
+      // Appel API - crée une nouvelle visite et fait le check-in
+      final response = await _tourneeService.checkinCustomer(
+        clientTourneeId,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+      
+      print('✅ Check-in effectué, visiteId: ${response.visiteId}');
+      
+      // Recharger automatiquement la tournée pour avoir les données à jour
+      await refresh();
+      
+    } catch (e) {
+      print('❌ Erreur check-in: $e');
+      rethrow;
+    }
   }
-}
 
-/// Checkout sans commande : terminer une visite sans commande
-Future<void> checkoutWithoutOrder(
-  int clientTourneeId,
-  String motif,
-  String? note,
-) async {
-  try {
-    // Récupérer position
-    final locationService = Get.find<LocationService>();
-    final position = await locationService.getCurrentPosition();
-    
-    // Appel API
-    await _tourneeService.checkoutCustomerWithoutOrder(
-      clientTourneeId,
-      motif,
-      note,
-      latitude: position?.latitude,
-      longitude: position?.longitude,
-    );
-    
-    // Recharger automatiquement la tournée
-    await refresh();
-    
-  } catch (e) {
-    print('Erreur checkout sans commande: $e');
-    rethrow;
+  /// Checkout avec commande : terminer une visite avec création de commande
+  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
+  Future<void> checkoutWithOrder(int visiteId) async {
+    try {
+      print('🛒 Check-out avec commande visite $visiteId');
+      
+      // Récupérer position GPS
+      final locationService = Get.find<LocationService>();
+      final position = await locationService.getCurrentPosition();
+      
+      // Appel API
+      await _tourneeService.checkoutVisiteWithOrder(
+        visiteId,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+      
+      print('✅ Check-out avec commande effectué');
+      
+      // Recharger automatiquement la tournée
+      await refresh();
+      
+    } catch (e) {
+      print('❌ Erreur checkout avec commande: $e');
+      rethrow;
+    }
   }
-}
 
-/// Clôturer la tournée
-Future<void> cloturerTournee(int tourneeId) async {
-  try {
-    // Appel API
-    await _tourneeService.clotureTournee(tourneeId);
-    
-    // Recharger automatiquement la tournée
-    await refresh();
-    
-  } catch (e) {
-    print('Erreur clôture tournée: $e');
-    rethrow;
+  /// Checkout sans commande : terminer une visite sans vente (avec motif)
+  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
+  Future<void> checkoutWithoutOrder(
+    int visiteId,
+    String motif,
+    String? note,
+  ) async {
+    try {
+      print('🔄 Check-out sans vente visite $visiteId - Motif: $motif');
+      
+      // Récupérer position GPS
+      final locationService = Get.find<LocationService>();
+      final position = await locationService.getCurrentPosition();
+      
+      // Appel API
+      await _tourneeService.checkoutVisiteWithoutOrder(
+        visiteId,
+        motif,
+        note,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+      
+      print('✅ Check-out sans vente effectué');
+      
+      // Recharger automatiquement la tournée
+      await refresh();
+      
+    } catch (e) {
+      print('❌ Erreur checkout sans commande: $e');
+      rethrow;
+    }
   }
-}
 
+  /// Clôturer la tournée
+  Future<void> cloturerTournee(int tourneeId) async {
+    try {
+      print('🔒 Clôture tournée $tourneeId');
+      
+      // Appel API
+      await _tourneeService.clotureTournee(tourneeId);
+      
+      print('✅ Tournée clôturée avec succès');
+      
+      // Recharger automatiquement la tournée
+      await refresh();
+      
+    } catch (e) {
+      print('❌ Erreur clôture tournée: $e');
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // MÉTHODES UTILITAIRES
+  // ========================================
+
+  /// Obtenir les statistiques de la tournée
+  Map<String, dynamic> getTourneeStats() {
+    if (tourneeToday.value == null) return {};
+    
+    final tournee = tourneeToday.value!;
+    
+    return {
+      'nombreClients': tournee.nombreClients,
+      'clientsVisites': tournee.clientsVisites,
+      'clientsNonVisites': tournee.clientsNonVisites,
+      'clientsEnCours': tournee.clientsEnCours,
+      'clientsTermines': tournee.clientsTermines,
+      'nombreTotalVisites': tournee.nombreTotalVisites,
+      'nombreCommandes': tournee.nombreCommandes,
+      'progressionPourcentage': tournee.progressionPourcentage,
+      'tauxConversion': tournee.tauxConversion,
+      'peutEtreCloturee': tournee.peutEtreCloturee,
+    };
+  }
+
+  /// Vérifier si un client peut démarrer une visite
+  bool canStartVisit(int clientTourneeId) {
+    if (tourneeToday.value == null) return false;
+    
+    final client = tourneeToday.value!.clients
+        .firstWhereOrNull((c) => c.id == clientTourneeId);
+    
+    if (client == null) return false;
+    
+    return _tourneeService.canStartVisit(client);
+  }
+
+  /// Vérifier si un client peut terminer sa visite
+  bool canEndVisit(int clientTourneeId) {
+    if (tourneeToday.value == null) return false;
+    
+    final client = tourneeToday.value!.clients
+        .firstWhereOrNull((c) => c.id == clientTourneeId);
+    
+    if (client == null) return false;
+    
+    return _tourneeService.canEndVisit(client);
+  }
 }

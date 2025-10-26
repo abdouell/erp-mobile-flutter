@@ -12,6 +12,10 @@ import 'api_service.dart';
 class TourneeService extends GetxService {
   final ApiService _apiService = Get.find<ApiService>();
 
+  // ========================================
+  // VENDEUR
+  // ========================================
+
   /// Récupérer vendeur par userId
   Future<Vendeur> getVendeurByUserId(int userId) async {
     try {
@@ -40,7 +44,11 @@ class TourneeService extends GetxService {
       throw Exception('Erreur inattendue: $e');
     }
   }
-  
+
+  // ========================================
+  // TOURNÉE
+  // ========================================
+
   /// Récupérer tournée du jour pour un vendeur
   Future<Tournee?> getTourneeToday(int vendeurId) async {
     try {
@@ -59,6 +67,8 @@ class TourneeService extends GetxService {
       
       final tournee = Tournee.fromJson(tourneesJson.first);
       print('Tournée du jour trouvée: ${tournee.id}');
+      print('  → ${tournee.nombreClients} clients');
+      print('  → ${tournee.nombreTotalVisites} visites totales');
       
       return tournee;
       
@@ -71,9 +81,54 @@ class TourneeService extends GetxService {
     }
   }
 
-  /// Check-in client (début de visite)
-  Future<VisitStatusResponse> checkinCustomer(int clientTourneeId, 
-                                             {double? latitude, double? longitude}) async {
+  /// Clôturer une tournée
+  Future<Tournee> clotureTournee(int tourneeId) async {
+    try {
+      print('🔒 Clôture tournée $tourneeId');
+      
+      final response = await _apiService.dio.post(
+        '/api/tournee/$tourneeId/cloture',
+      );
+      
+      print('✅ Tournée clôturée avec succès');
+      return Tournee.fromJson(response.data);
+      
+    } on DioException catch (e) {
+      print('❌ Erreur clôture tournée: ${e.response?.statusCode}');
+      print('Response data: ${e.response?.data}');
+      
+      if (e.response?.statusCode == 404) {
+        throw Exception('Tournée introuvable');
+      } else if (e.response?.statusCode == 400) {
+        // Gérer les erreurs métier
+        final errorCode = e.response?.data['code'];
+        if (errorCode == 'CLIENTS_IN_PROGRESS') {
+          throw Exception('Des clients sont encore en cours de visite');
+        } else if (errorCode == 'TOURNEE_ALREADY_CLOSED') {
+          throw Exception('La tournée est déjà terminée');
+        } else {
+          throw Exception('Impossible de clôturer la tournée');
+        }
+      } else {
+        throw Exception('Erreur serveur lors de la clôture');
+      }
+    } catch (e) {
+      print('❌ Erreur générale clôture: $e');
+      throw Exception('Erreur inattendue: $e');
+    }
+  }
+
+  // ========================================
+  // GESTION DES VISITES
+  // ========================================
+
+  /// ✅ Check-in client (crée une nouvelle visite et fait le check-in)
+  /// Endpoint: POST /api/tournee/client/{clientTourneeId}/checkin
+  /// Retourne: VisitStatusResponse avec le visiteId créé
+  Future<VisitStatusResponse> checkinCustomer(
+    int clientTourneeId, 
+    {double? latitude, double? longitude}
+  ) async {
     try {
       print('🔄 Check-in client $clientTourneeId');
       if (latitude != null && longitude != null) {
@@ -92,6 +147,8 @@ class TourneeService extends GetxService {
       );
       
       print('✅ Check-in effectué avec succès');
+      print('   → visiteId créé: ${response.data['visiteId']}');
+      
       return VisitStatusResponse.fromJson(response.data);
       
     } on DioException catch (e) {
@@ -113,11 +170,15 @@ class TourneeService extends GetxService {
     }
   }
 
-  /// Check-out avec commande
-  Future<VisitStatusResponse> checkoutCustomerWithOrder(int clientTourneeId,
-                                                       {double? latitude, double? longitude}) async {
+  /// ✅ Check-out avec commande (sur une visite existante)
+  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
+  /// Endpoint: POST /api/tournee/visite/{visiteId}/checkout-order
+  Future<VisitStatusResponse> checkoutVisiteWithOrder(
+    int visiteId,
+    {double? latitude, double? longitude}
+  ) async {
     try {
-      print('🛒 Check-out avec commande client $clientTourneeId');
+      print('🛒 Check-out avec commande visite $visiteId');
       
       final request = CheckoutRequest.withOrder(
         latitude: latitude,
@@ -125,7 +186,7 @@ class TourneeService extends GetxService {
       );
       
       final response = await _apiService.dio.post(
-        '/api/tournee/client/$clientTourneeId/checkout-order',
+        '/api/tournee/visite/$visiteId/checkout-order',
         data: request.toJson(),
       );
       
@@ -136,7 +197,7 @@ class TourneeService extends GetxService {
       print('❌ Erreur check-out commande: ${e.response?.statusCode}');
       
       if (e.response?.statusCode == 404) {
-        throw Exception('Client de tournée introuvable');
+        throw Exception('Visite introuvable');
       } else if (e.response?.statusCode == 400) {
         throw Exception('Impossible de terminer la visite dans l\'état actuel');
       } else {
@@ -147,12 +208,17 @@ class TourneeService extends GetxService {
     }
   }
 
-  /// Check-out sans vente (avec motif)
-  Future<VisitStatusResponse> checkoutCustomerWithoutOrder(int clientTourneeId, 
-                                                          String motif, String? note,
-                                                          {double? latitude, double? longitude}) async {
+  /// ✅ Check-out sans vente (avec motif)
+  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
+  /// Endpoint: POST /api/tournee/visite/{visiteId}/checkout-no-sale
+  Future<VisitStatusResponse> checkoutVisiteWithoutOrder(
+    int visiteId, 
+    String motif, 
+    String? note,
+    {double? latitude, double? longitude}
+  ) async {
     try {
-      print('🔄 Check-out sans vente client $clientTourneeId - Motif: $motif');
+      print('🔄 Check-out sans vente visite $visiteId - Motif: $motif');
       
       final request = CheckoutRequest.withoutSale(
         latitude: latitude,
@@ -162,7 +228,7 @@ class TourneeService extends GetxService {
       );
       
       final response = await _apiService.dio.post(
-        '/api/tournee/client/$clientTourneeId/checkout-no-sale',
+        '/api/tournee/visite/$visiteId/checkout-no-sale',
         data: request.toJson(),
       );
       
@@ -173,7 +239,7 @@ class TourneeService extends GetxService {
       print('❌ Erreur check-out sans vente: ${e.response?.statusCode}');
       
       if (e.response?.statusCode == 404) {
-        throw Exception('Client de tournée introuvable');
+        throw Exception('Visite introuvable');
       } else if (e.response?.statusCode == 400) {
         throw Exception('Données invalides pour la clôture');
       } else {
@@ -184,13 +250,15 @@ class TourneeService extends GetxService {
     }
   }
 
-  /// Obtenir le statut de visite d'un client
-  Future<VisitStatusResponse> getVisitStatus(int clientTourneeId) async {
+  /// ✅ Obtenir le statut d'une visite
+  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
+  /// Endpoint: GET /api/tournee/visite/{visiteId}/status
+  Future<VisitStatusResponse> getVisitStatus(int visiteId) async {
     try {
-      print('📊 Récupération statut visite client $clientTourneeId');
+      print('📊 Récupération statut visite $visiteId');
       
       final response = await _apiService.dio.get(
-        '/api/tournee/client/$clientTourneeId/status',
+        '/api/tournee/visite/$visiteId/status',
       );
       
       return VisitStatusResponse.fromJson(response.data);
@@ -203,19 +271,23 @@ class TourneeService extends GetxService {
     }
   }
 
-  /// Méthodes utilitaires pour la gestion des visites
+  // ========================================
+  // MÉTHODES UTILITAIRES
+  // ========================================
 
-  /// Vérifier si le client peut démarrer une visite
+  /// Vérifier si le client peut démarrer une nouvelle visite
+  /// Un client peut toujours démarrer une nouvelle visite si aucune n'est en cours
   bool canStartVisit(ClientTournee client) {
-    return client.statutVisite.canTransitionTo(StatutVisite.VISITE_EN_COURS);
+    // Pas de visite en cours = peut démarrer
+    return !client.hasVisitInProgress;
   }
 
-  /// Vérifier si le client peut terminer une visite
+  /// Vérifier si le client peut terminer sa visite en cours
   bool canEndVisit(ClientTournee client) {
     return client.isInProgress;
   }
 
-  /// Calculer les statistiques d'une tournée
+  /// Calculer les statistiques d'une tournée (basées sur les clients)
   Map<String, int> calculateTourneeStats(List<ClientTournee> clients) {
     return {
       'total': clients.length,
@@ -226,7 +298,23 @@ class TourneeService extends GetxService {
     };
   }
 
-  /// Obtenir le pourcentage de progression
+  /// Calculer les statistiques détaillées (incluant toutes les visites)
+  Map<String, dynamic> calculateDetailedStats(List<ClientTournee> clients) {
+    final totalVisites = clients.fold(0, (sum, c) => sum + c.visitCount);
+    final totalCommandes = clients.fold(0, (sum, c) => sum + c.orderCount);
+    
+    return {
+      'totalClients': clients.length,
+      'totalVisites': totalVisites,
+      'totalCommandes': totalCommandes,
+      'clientsVisites': clients.where((c) => c.isVisited).length,
+      'clientsEnCours': clients.where((c) => c.isInProgress).length,
+      'clientsTermines': clients.where((c) => c.isCompleted).length,
+      'clientsAvecCommande': clients.where((c) => c.hasOrderCreated).length,
+    };
+  }
+
+  /// Obtenir le pourcentage de progression (clients visités)
   double calculateProgressionPercentage(List<ClientTournee> clients) {
     if (clients.isEmpty) return 0.0;
     
@@ -234,50 +322,12 @@ class TourneeService extends GetxService {
     return (visited / clients.length) * 100.0;
   }
 
-  /// Obtenir le taux de conversion (commandes / visites terminées)
+  /// Obtenir le taux de conversion (clients avec commande / clients visités)
   double calculateConversionRate(List<ClientTournee> clients) {
-    final completed = clients.where((c) => c.isCompleted).length;
-    if (completed == 0) return 0.0;
+    final visited = clients.where((c) => c.isVisited).length;
+    if (visited == 0) return 0.0;
     
-    final withOrder = clients.where((c) => c.statutVisite == StatutVisite.COMMANDE_CREEE).length;
-    return (withOrder / completed) * 100.0;
+    final withOrder = clients.where((c) => c.hasOrderCreated).length;
+    return (withOrder / visited) * 100.0;
   }
-
-  /// Clôturer une tournée
-Future<Tournee> clotureTournee(int tourneeId) async {
-  try {
-    print('🔒 Clôture tournée $tourneeId');
-    
-    final response = await _apiService.dio.post(
-      '/api/tournee/$tourneeId/cloture',
-    );
-    
-    print('✅ Tournée clôturée avec succès');
-    return Tournee.fromJson(response.data);
-    
-  } on DioException catch (e) {
-    print('❌ Erreur clôture tournée: ${e.response?.statusCode}');
-    print('Response data: ${e.response?.data}');
-    
-    if (e.response?.statusCode == 404) {
-      throw Exception('Tournée introuvable');
-    } else if (e.response?.statusCode == 400) {
-      // Gérer les erreurs métier
-      final errorCode = e.response?.data['code'];
-      if (errorCode == 'CLIENTS_IN_PROGRESS') {
-        throw Exception('Des clients sont encore en cours de visite');
-      } else if (errorCode == 'TOURNEE_ALREADY_CLOSED') {
-        throw Exception('La tournée est déjà terminée');
-      } else {
-        throw Exception('Impossible de clôturer la tournée');
-      }
-    } else {
-      throw Exception('Erreur serveur lors de la clôture');
-    }
-  } catch (e) {
-    print('❌ Erreur générale clôture: $e');
-    throw Exception('Erreur inattendue: $e');
-  }
-}
-
 }

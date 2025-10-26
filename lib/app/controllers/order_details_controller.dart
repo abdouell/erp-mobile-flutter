@@ -332,7 +332,6 @@ Statut: ${currentOrder.statusDisplay}
       customerAddress: customer.fullAddress,
       customerRc: customer.rc ?? '',
       ordre: 0,
-      statutVisite: StatutVisite.NON_VISITE, // ✅ Utiliser le nouveau enum
     );
     
     Get.toNamed('/order-create', arguments: {

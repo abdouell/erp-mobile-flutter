@@ -1,4 +1,5 @@
 import 'statut_visite.dart';
+import 'visite.dart';
 
 class ClientTournee {
   final int? id;
@@ -7,22 +8,10 @@ class ClientTournee {
   final String customerAddress;
   final String customerRc;
   final int? ordre;
-  final StatutVisite statutVisite;
   final String? commentaire;
 
-  // Données de check-in
-  final DateTime? checkinAt;
-  final double? checkinLat;
-  final double? checkinLon;
-
-  // Données de check-out
-  final DateTime? checkoutAt;
-  final double? checkoutLat;
-  final double? checkoutLon;
-
-  // Motif et note pour visite terminée sans commande
-  final String? motifVisite;
-  final String? noteVisite;
+  // ✅ NOUVEAU : Liste des visites pour ce client
+  final List<Visite> visites;
 
   const ClientTournee({
     this.id,
@@ -31,20 +20,25 @@ class ClientTournee {
     required this.customerAddress,
     required this.customerRc,
     this.ordre,
-    this.statutVisite = StatutVisite.NON_VISITE,
     this.commentaire,
-    this.checkinAt,
-    this.checkinLat,
-    this.checkinLon,
-    this.checkoutAt,
-    this.checkoutLat,
-    this.checkoutLon,
-    this.motifVisite,
-    this.noteVisite,
+    this.visites = const [],
   });
 
-  // Factory depuis JSON
+  // ========================================
+  // FACTORY DEPUIS JSON
+  // ========================================
+
   factory ClientTournee.fromJson(Map<String, dynamic> json) {
+    // Parser la liste de visites si elle existe
+    final List<Visite> parsedVisites = [];
+    if (json['visites'] != null && json['visites'] is List) {
+      parsedVisites.addAll(
+        (json['visites'] as List)
+            .map((visiteJson) => Visite.fromJson(visiteJson))
+            .toList()
+      );
+    }
+
     return ClientTournee(
       id: json['id'],
       customerId: json['customerId'] ?? 0,
@@ -52,26 +46,15 @@ class ClientTournee {
       customerAddress: json['customerAddress'] ?? '',
       customerRc: json['customerRc'] ?? '',
       ordre: json['ordre'],
-      statutVisite: json['statutVisite'] != null 
-          ? StatutVisite.fromString(json['statutVisite'])
-          : StatutVisite.NON_VISITE,
       commentaire: json['commentaire'],
-      checkinAt: json['checkinAt'] != null 
-          ? DateTime.parse(json['checkinAt'])
-          : null,
-      checkinLat: json['checkinLat']?.toDouble(),
-      checkinLon: json['checkinLon']?.toDouble(),
-      checkoutAt: json['checkoutAt'] != null 
-          ? DateTime.parse(json['checkoutAt'])
-          : null,
-      checkoutLat: json['checkoutLat']?.toDouble(),
-      checkoutLon: json['checkoutLon']?.toDouble(),
-      motifVisite: json['motifVisite'],
-      noteVisite: json['noteVisite'],
+      visites: parsedVisites,
     );
   }
 
-  // Conversion vers JSON
+  // ========================================
+  // CONVERSION VERS JSON
+  // ========================================
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -80,48 +63,126 @@ class ClientTournee {
       'customerAddress': customerAddress,
       'customerRc': customerRc,
       'ordre': ordre,
-      'statutVisite': statutVisite.serverValue,
       'commentaire': commentaire,
-      'checkinAt': checkinAt?.toIso8601String(),
-      'checkinLat': checkinLat,
-      'checkinLon': checkinLon,
-      'checkoutAt': checkoutAt?.toIso8601String(),
-      'checkoutLat': checkoutLat,
-      'checkoutLon': checkoutLon,
-      'motifVisite': motifVisite,
-      'noteVisite': noteVisite,
+      'visites': visites.map((v) => v.toJson()).toList(),
     };
   }
 
-  // Méthodes utilitaires
-  bool get isVisited => statutVisite.isVisited;
-  bool get isInProgress => statutVisite.isInProgress;
-  bool get isCompleted => statutVisite.isCompleted;
+  // ========================================
+  // GETTERS POUR LA VISITE COURANTE
+  // ========================================
 
-  // Durée de visite en minutes
-  int? get visitDurationMinutes {
-    if (checkinAt != null && checkoutAt != null) {
-      return checkoutAt!.difference(checkinAt!).inMinutes;
-    }
-    return null;
+  /// Obtenir la visite courante (la dernière de la liste)
+  Visite? get currentVisite {
+    if (visites.isEmpty) return null;
+    return visites.last;
   }
 
-  // Formatage de la durée
-  String get formattedDuration {
-    final duration = visitDurationMinutes;
-    if (duration == null) return '';
-    
-    final hours = duration ~/ 60;
-    final minutes = duration % 60;
-    
-    if (hours > 0) {
-      return '${hours}h ${minutes}min';
-    } else {
-      return '${minutes}min';
-    }
+  /// Obtenir le statut de la visite courante
+  /// Si aucune visite, retourne NON_VISITE
+  StatutVisite get statutVisite {
+    return currentVisite?.statutVisite ?? StatutVisite.NON_VISITE;
   }
 
-  // Méthode copyWith pour mise à jour immutable
+  /// Date/heure de check-in de la visite courante
+  DateTime? get checkinAt => currentVisite?.checkinAt;
+  
+  /// Coordonnées GPS du check-in
+  double? get checkinLat => currentVisite?.checkinLat;
+  double? get checkinLon => currentVisite?.checkinLon;
+
+  /// Date/heure de check-out de la visite courante
+  DateTime? get checkoutAt => currentVisite?.checkoutAt;
+  
+  /// Coordonnées GPS du check-out
+  double? get checkoutLat => currentVisite?.checkoutLat;
+  double? get checkoutLon => currentVisite?.checkoutLon;
+
+  /// Motif de visite (pour visite sans vente)
+  String? get motifVisite => currentVisite?.motifVisite;
+  
+  /// Note de visite
+  String? get noteVisite => currentVisite?.noteVisite;
+
+  // ========================================
+  // MÉTHODES UTILITAIRES - VISITE COURANTE
+  // ========================================
+
+  /// La visite courante a-t-elle été démarrée ?
+  bool get isVisited => currentVisite?.isVisited ?? false;
+  
+  /// La visite courante est-elle en cours ?
+  bool get isInProgress => currentVisite?.isInProgress ?? false;
+  
+  /// La visite courante est-elle terminée ?
+  bool get isCompleted => currentVisite?.isCompleted ?? false;
+
+  /// Durée de la visite courante en minutes
+  int? get visitDurationMinutes => currentVisite?.visitDurationMinutes;
+
+  /// Formatage de la durée de la visite courante
+  String get formattedDuration => currentVisite?.formattedDuration ?? '';
+
+  // ========================================
+  // MÉTHODES UTILITAIRES - HISTORIQUE
+  // ========================================
+
+  /// Y a-t-il au moins une visite ?
+  bool get hasVisits => visites.isNotEmpty;
+
+  /// Nombre total de visites
+  int get visitCount => visites.length;
+
+  /// Y a-t-il une visite en cours ?
+  bool get hasVisitInProgress {
+    return visites.any((v) => v.isInProgress);
+  }
+
+  /// Nombre de visites terminées
+  int get completedVisitsCount {
+    return visites.where((v) => v.isCompleted).length;
+  }
+
+  /// Liste des visites terminées
+  List<Visite> get completedVisites {
+    return visites.where((v) => v.isCompleted).toList();
+  }
+
+  /// Liste des visites avec commande
+  List<Visite> get visitesAvecCommande {
+    return visites.where((v) => v.hasOrder).toList();
+  }
+
+  /// Liste des visites sans vente
+  List<Visite> get visitesSansVente {
+    return visites.where((v) => v.hasNoSale).toList();
+  }
+
+  /// Y a-t-il au moins une commande créée ?
+  bool get hasOrderCreated {
+    return visites.any((v) => v.hasOrder);
+  }
+
+  /// Nombre total de commandes créées pour ce client
+  int get orderCount {
+    return visitesAvecCommande.length;
+  }
+
+  /// Durée totale de toutes les visites (en minutes)
+  int get totalVisitDuration {
+    return visites.fold(0, (sum, v) => sum + (v.visitDurationMinutes ?? 0));
+  }
+
+  /// Durée moyenne des visites (en minutes)
+  double get averageVisitDuration {
+    if (completedVisitsCount == 0) return 0.0;
+    return totalVisitDuration / completedVisitsCount;
+  }
+
+  // ========================================
+  // MÉTHODE COPYWIDTH
+  // ========================================
+
   ClientTournee copyWith({
     int? id,
     int? customerId,
@@ -129,16 +190,8 @@ class ClientTournee {
     String? customerAddress,
     String? customerRc,
     int? ordre,
-    StatutVisite? statutVisite,
     String? commentaire,
-    DateTime? checkinAt,
-    double? checkinLat,
-    double? checkinLon,
-    DateTime? checkoutAt,
-    double? checkoutLat,
-    double? checkoutLon,
-    String? motifVisite,
-    String? noteVisite,
+    List<Visite>? visites,
   }) {
     return ClientTournee(
       id: id ?? this.id,
@@ -147,22 +200,19 @@ class ClientTournee {
       customerAddress: customerAddress ?? this.customerAddress,
       customerRc: customerRc ?? this.customerRc,
       ordre: ordre ?? this.ordre,
-      statutVisite: statutVisite ?? this.statutVisite,
       commentaire: commentaire ?? this.commentaire,
-      checkinAt: checkinAt ?? this.checkinAt,
-      checkinLat: checkinLat ?? this.checkinLat,
-      checkinLon: checkinLon ?? this.checkinLon,
-      checkoutAt: checkoutAt ?? this.checkoutAt,
-      checkoutLat: checkoutLat ?? this.checkoutLat,
-      checkoutLon: checkoutLon ?? this.checkoutLon,
-      motifVisite: motifVisite ?? this.motifVisite,
-      noteVisite: noteVisite ?? this.noteVisite,
+      visites: visites ?? this.visites,
     );
   }
 
+  // ========================================
+  // MÉTHODES STANDARD
+  // ========================================
+
   @override
   String toString() {
-    return 'ClientTournee(id: $id, customerName: $customerName, statutVisite: $statutVisite)';
+    return 'ClientTournee(id: $id, customerName: $customerName, '
+           'visites: ${visites.length}, statutVisite: $statutVisite)';
   }
 
   @override

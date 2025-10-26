@@ -1,6 +1,9 @@
 import 'package:erp_mobile/app/models/statut_visite.dart';
 
 class VisitStatusResponse {
+  // ✅ NOUVEAU : ID de la visite créée/modifiée
+  final int? visiteId;
+  
   final int clientTourneeId;
   final StatutVisite statutVisite;
   final String statutLabel;
@@ -15,6 +18,7 @@ class VisitStatusResponse {
   final String? noteVisite;
 
   const VisitStatusResponse({
+    this.visiteId,  // ✅ NOUVEAU
     required this.clientTourneeId,
     required this.statutVisite,
     required this.statutLabel,
@@ -31,6 +35,7 @@ class VisitStatusResponse {
 
   factory VisitStatusResponse.fromJson(Map<String, dynamic> json) {
     return VisitStatusResponse(
+      visiteId: json['visiteId'],  // ✅ NOUVEAU
       clientTourneeId: json['clientTourneeId'],
       statutVisite: StatutVisite.fromString(json['statutVisite']),
       statutLabel: json['statutLabel'] ?? '',

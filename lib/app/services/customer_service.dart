@@ -15,8 +15,7 @@ class CustomerService extends GetxService {
       print('👤 Récupération client ID: $customerId');
       
       final response = await _apiService.dio.get('/api/customers/$customerId');
-      print('✅ Client trouvé: ${response.data}');
-      
+
       return Customer.fromJson(response.data);
       
     } on DioException catch (e) {
@@ -38,11 +37,7 @@ class CustomerService extends GetxService {
   /// 👥 RÉCUPÉRER TOUS LES CLIENTS
   Future<List<Customer>> getAllCustomers() async {
     try {
-      print('👥 Récupération de tous les clients');
-      
       final response = await _apiService.dio.get('/api/customers');
-      print('✅ Clients trouvés: ${response.data?.length ?? 0}');
-      
       final List<dynamic> customersJson = response.data ?? [];
       return customersJson.map((json) => Customer.fromJson(json)).toList();
       
@@ -58,8 +53,6 @@ class CustomerService extends GetxService {
   /// 🔍 RECHERCHER DES CLIENTS
   Future<List<Customer>> searchCustomers(String query) async {
     try {
-      print('🔍 Recherche clients: "$query"');
-      
       final response = await _apiService.dio.get('/api/customers/search', queryParameters: {
         'q': query,
       });
@@ -67,7 +60,6 @@ class CustomerService extends GetxService {
       final List<dynamic> customersJson = response.data ?? [];
       final customers = customersJson.map((json) => Customer.fromJson(json)).toList();
       
-      print('✅ ${customers.length} clients trouvés pour "$query"');
       return customers;
       
     } on DioException catch (e) {
@@ -81,14 +73,12 @@ class CustomerService extends GetxService {
   /// 📍 RÉCUPÉRER CLIENTS PAR TOURNÉE
   Future<List<Customer>> getCustomersByTournee(String tourneeId) async {
     try {
-      print('📍 Récupération clients tournée: $tourneeId');
-      
+
       final response = await _apiService.dio.get('/api/customers/tournee/$tourneeId');
       
       final List<dynamic> customersJson = response.data ?? [];
       final customers = customersJson.map((json) => Customer.fromJson(json)).toList();
       
-      print('✅ ${customers.length} clients trouvés pour la tournée $tourneeId');
       return customers;
       
     } on DioException catch (e) {
@@ -102,11 +92,8 @@ class CustomerService extends GetxService {
   /// 📋 RÉCUPÉRER COMMANDES D'UN CLIENT
 Future<List<Order>> getCustomerOrders(int customerId) async {
   try {
-    print('📋 Récupération commandes client: $customerId');
-    
     final response = await _apiService.dio.get('/api/order/customer/$customerId');
-    print('✅ Commandes trouvées: ${response.data?.length ?? 0}');
-    
+
     final List<dynamic> ordersJson = response.data ?? [];
     final orders = ordersJson.map((json) => Order.fromJson(json)).toList();
     

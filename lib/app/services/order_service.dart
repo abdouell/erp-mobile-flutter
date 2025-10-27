@@ -10,9 +10,6 @@ class OrderService extends GetxService {
   /// Créer ou mettre à jour une commande
 Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
     try {
-      print('=== SAUVEGARDE COMMANDE ===');
-      print('Order: $order');
-      
       final orderData = order.toJson();
 
       if (clientTourneeId != null) {
@@ -23,16 +20,13 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
       
       final response = await _apiService.dio.post('/api/order', data: orderData);
       
-      print('✅ Réponse brute: ${response.data}');
-      print('✅ Type de réponse: ${response.data.runtimeType}');
-      
+
       // CHANGEMENT: Plus de fallback, vraies exceptions
       if (response.data == null || response.data == "" || response.data is String) {
         throw Exception('Le serveur a retourné une réponse vide ou invalide. La sauvegarde a peut-être échoué.');
       } else if (response.data is Map<String, dynamic>) {
         try {
           final savedOrder = Order.fromJson(response.data);
-          print('✅ Commande parsée depuis JSON: $savedOrder');
           return savedOrder;
         } catch (parseError) {
           print('❌ Erreur parsing JSON: $parseError');
@@ -80,11 +74,9 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
   /// Récupérer une commande par son ID
   Future<Order> getOrderById(int orderId) async {
     try {
-      print('🔍 Récupération commande ID: $orderId');
-      
+
       final response = await _apiService.dio.get('/api/order/$orderId');
-      print('✅ Commande trouvée: ${response.data}');
-      
+
       return Order.fromJson(response.data);
       
     } on DioException catch (e) {
@@ -106,11 +98,9 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
   /// Récupérer toutes les commandes d'un utilisateur
   Future<List<Order>> getUserOrders(int userId) async {
     try {
-      print('👤 Récupération commandes user: $userId');
-      
+
       final response = await _apiService.dio.get('/api/order/user/$userId');
-      print('✅ Commandes trouvées: ${response.data?.length ?? 0}');
-      
+
       final List<dynamic> ordersJson = response.data ?? [];
       final orders = ordersJson.map((json) => Order.fromJson(json)).toList();
       
@@ -132,11 +122,8 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
   /// Récupérer les détails d'une commande
   Future<List<OrderItem>> getOrderDetails(int orderId) async {
     try {
-      print('📋 Récupération détails commande: $orderId');
-      
       final response = await _apiService.dio.get('/api/order/$orderId/order-detail');
-      print('✅ Détails trouvés: ${response.data?.length ?? 0} items');
-      
+
       final List<dynamic> itemsJson = response.data ?? [];
       return itemsJson.map((json) => OrderItem.fromJson(json)).toList();
       

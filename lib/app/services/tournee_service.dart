@@ -19,13 +19,9 @@ class TourneeService extends GetxService {
   /// Récupérer vendeur par userId
   Future<Vendeur> getVendeurByUserId(int userId) async {
     try {
-      print('=== DEBUG JWT ===');
-      print('UserId: $userId');
-      print('Headers Dio: ${_apiService.dio.options.headers}');
-      
+
       final response = await _apiService.dio.get('/api/vendeur/user/$userId');
       
-      print('Vendeur trouvé: ${response.data}');
       return Vendeur.fromJson(response.data);
       
     } on DioException catch (e) {
@@ -52,24 +48,17 @@ class TourneeService extends GetxService {
   /// Récupérer tournée du jour pour un vendeur
   Future<Tournee?> getTourneeToday(int vendeurId) async {
     try {
-      print('Récupération tournée du jour pour vendeur: $vendeurId');
-      
+
       final response = await _apiService.dio.get('/api/tournee/vendeur/$vendeurId/today');
-      
-      print('Réponse tournées: ${response.data}');
       
       final List<dynamic> tourneesJson = response.data;
       
       if (tourneesJson.isEmpty) {
-        print('Aucune tournée aujourd\'hui');
         return null;
       }
       
       final tournee = Tournee.fromJson(tourneesJson.first);
-      print('Tournée du jour trouvée: ${tournee.id}');
-      print('  → ${tournee.nombreClients} clients');
-      print('  → ${tournee.nombreTotalVisites} visites totales');
-      
+
       return tournee;
       
     } on DioException catch (e) {

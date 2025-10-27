@@ -59,9 +59,6 @@ class OrderController extends GetxController {
   /// 🚀 INITIALISATION - Appelée depuis la vue
   Future<void> initializeOrder(ClientTournee client) async {
     try {
-      print('=== INITIALISATION COMMANDE ===');
-      print('Client: ${client.customerName} (ID: ${client.customerId})');
-      
       // Vérifications de sécurité
       if (client.customerId <= 0) {
         throw Exception('Client invalide: ID manquant');
@@ -75,8 +72,6 @@ class OrderController extends GetxController {
         throw Exception('Utilisateur non connecté');
       }
       
-      print('📝 Création commande pour user ${user.id} et client ${client.customerId}');
-      
       currentOrder.value = _orderService.createNewOrder(
         userId: user.id,
         customerId: client.customerId,
@@ -88,10 +83,8 @@ class OrderController extends GetxController {
       // Charger les données produits
       await _loadInitialData();
       
-      print('✅ Commande initialisée pour client ${client.customerName}');
-      
+
     } catch (e) {
-      print('❌ Erreur initialisation commande: $e');
       _handleError('Erreur initialisation commande', e);
     }
   }
@@ -111,16 +104,13 @@ Future<void> _loadProducts() async {
     isLoadingProducts.value = true;
     hasError.value = false;
     
-    print('📦 Chargement produits...');
-    
     // Vérifier qu'on a un client sélectionné
     if (selectedClient.value == null) {
       throw Exception('Aucun client sélectionné');
     }
     
     final customerId = selectedClient.value!.customerId;
-    print('👤 Chargement produits pour client ID: $customerId');
-    
+
     // ✅ RÉCUPÉRER LE VENDEUR pour savoir si filtrage par emplacement nécessaire
     final tourneeController = Get.find<TourneeController>();
     final vendeur = tourneeController.vendeur.value;
@@ -449,19 +439,13 @@ Future<void> validateOrder() async {
     print('📄 Début validation...');
 
     // Récupérer la géolocalisation
-    print('📍 Récupération position GPS...');
     final locationService = Get.find<LocationService>();
     final position = await locationService.getCurrentPosition();
     
     double? latitude = position?.latitude;
     double? longitude = position?.longitude;
     
-    if (position == null) {
-      print('⚠️ Impossible de récupérer la position GPS, continuation sans géolocalisation');
-    } else {
-      print('✅ Position GPS récupérée: $latitude, $longitude');
-    }
-    
+
     // Créer la commande finale avec le commentaire
     final finalOrder = currentOrder.value!.copyWith(
       orderDetails: cartItems.toList(),

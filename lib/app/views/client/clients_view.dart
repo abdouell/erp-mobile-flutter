@@ -19,7 +19,7 @@ class ClientsView extends GetView<TourneeController> {
           Obx(() {
             final tournee = controller.tourneeToday.value;
             if (tournee == null) return SizedBox.shrink();
-            
+
             return Padding(
               padding: EdgeInsets.only(right: 16),
               child: Center(
@@ -35,10 +35,10 @@ class ClientsView extends GetView<TourneeController> {
       body: Obx(() => _buildBody()),
     );
   }
-  
+
   Widget _buildBody() {
     final tournee = controller.tourneeToday.value;
-    
+
     if (tournee == null) {
       return Center(
         child: Column(
@@ -53,7 +53,7 @@ class ClientsView extends GetView<TourneeController> {
         ),
       );
     }
-    
+
     if (tournee.clients.isEmpty) {
       return Center(
         child: Column(
@@ -68,7 +68,7 @@ class ClientsView extends GetView<TourneeController> {
         ),
       );
     }
-    
+
     return Column(
       children: [
         _buildTourneeHeader(tournee),
@@ -116,7 +116,7 @@ class ClientsView extends GetView<TourneeController> {
       ),
     );
   }
-  
+
   Widget _buildClientCard(ClientTournee clientTournee, int position) {
     return Card(
       margin: EdgeInsets.only(bottom: 12),
@@ -213,87 +213,95 @@ class ClientsView extends GetView<TourneeController> {
   }
 
   void _showOrderHistory(ClientTournee client) {
-    Get.bottomSheet(
-      Container(
-        height: Get.height * 0.8,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
-              child: Row(
-                children: [
-                  Icon(Icons.history, color: Get.theme.primaryColor),
-                  SizedBox(width: 8),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Historique commandes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(client.customerName, style: TextStyle(color: Colors.grey.shade600)),
-                  ])),
-                  IconButton(onPressed: () => Get.back(), icon: Icon(Icons.close)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: FutureBuilder<List<Order>>(
-                future: Get.find<CustomerService>().getCustomerOrders(client.customerId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Erreur: ${snapshot.error}'));
-                  }
-                  
-                  final orders = snapshot.data ?? [];
-                  
-                  if (orders.isEmpty) {
-                    return Center(child: Text('Aucune commande'));
-                  }
-                  
-                  return ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      final order = orders[index];
-                      return Card(
-                        child: ListTile(
-                          title: Text('Commande #${order.id}'),
-                          subtitle: Text('${order.formattedDate} • ${order.itemCount} articles'),
-                          trailing: Text(order.formattedTotal, style: TextStyle(fontWeight: FontWeight.bold)),
-                          onTap: () {
-                            Get.back();
-                            Get.toNamed('/order-details/${order.id}');
-                          },
-                        ),
-                      );
+    Get.dialog(
+      AlertDialog(
+        title: Text('Historique commandes'),
+        content: FutureBuilder<List<Order>>(
+          future: Get.find<CustomerService>().getCustomerOrders(client.customerId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return Container(
+                height: 100,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final orders = snapshot.data!;
+            if (orders.isEmpty) {
+              return Container(
+                height: 100,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.receipt_long, size: 40, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text('Aucune commande trouvée'),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Container(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: orders.length > 5 ? 5 : orders.length,
+                itemBuilder: (context, index) {
+                  final order = orders[index];
+                  return ListTile(
+                    leading: Icon(
+                      order.isValidated ? Icons.check_circle : Icons.pending,
+                      color: order.isValidated ? Colors.green : Colors.orange,
+                    ),
+                    title: Text('Commande #${order.id}'),
+                    subtitle: Text(order.formattedDate),
+                    trailing: Text(
+                      '${order.totalAmount.toStringAsFixed(2)} €',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onTap: () {
+                      Get.back();
+                      Get.toNamed('/order-details/${order.id}');
                     },
                   );
                 },
               ),
-            ),
-          ],
+            );
+          },
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Fermer'),
+          ),
+        ],
       ),
-      isScrollControlled: true,
     );
   }
 
   void _callClient(ClientTournee client) {
-    Get.snackbar('Appel client', 'Appel de ${client.customerName}', backgroundColor: Colors.orange, colorText: Colors.white);
+    Get.snackbar(
+      'Appel',
+      'Fonction d\'appel non implémentée',
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+    );
   }
-  
+
   String _formatDate(DateTime date) {
     final now = DateTime.now();
-    if (date.year == now.year && date.month == now.month && date.day == now.day) return 'aujourd\'hui';
+    if (date.year == now.year && date.month == now.month && date.day == now.day) {
+      return 'Aujourd\'hui';
+    }
     return '${date.day}/${date.month}/${date.year}';
   }
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
-    
+
     if (hours > 0) {
       return '${hours}h ${minutes}min';
     } else {
@@ -323,7 +331,7 @@ class ClientsView extends GetView<TourneeController> {
   void _handleClotureTournee(Tournee tournee) {
     final clientsNonVisites = tournee.clients.where((c) => c.statutVisite == StatutVisite.NON_VISITE).length;
     final clientsEnCours = tournee.clients.where((c) => c.statutVisite == StatutVisite.VISITE_EN_COURS).length;
-    
+
     if (clientsEnCours > 0) {
       Get.dialog(AlertDialog(
         title: Text('Impossible de clôturer'),
@@ -332,7 +340,7 @@ class ClientsView extends GetView<TourneeController> {
       ));
       return;
     }
-    
+
     if (clientsNonVisites > 0) {
       Get.dialog(AlertDialog(
         title: Text('Clôture de tournée'),
@@ -350,12 +358,12 @@ class ClientsView extends GetView<TourneeController> {
   void _executeClotureTournee(Tournee tournee) async {
     try {
       Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Clôture en cours...')])), barrierDismissible: false);
-      
+
       await controller.cloturerTournee(tournee.id);
-      
+
       Get.back();
       Get.back();
-      
+
       Get.snackbar('Tournée terminée', 'La tournée a été clôturée avec succès', backgroundColor: Colors.green, colorText: Colors.white);
     } catch (e) {
       if (Get.isDialogOpen == true) Get.back();
@@ -364,175 +372,200 @@ class ClientsView extends GetView<TourneeController> {
   }
 
   void _showClientActions(ClientTournee client) {
-  Get.bottomSheet(
-    Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    Get.bottomSheet(
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: client.statutVisite.color,
+                    child: Icon(client.statutVisite.icon, color: Colors.white),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(client.customerName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(client.customerAddress, style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  IconButton(onPressed: () => Get.back(), icon: Icon(Icons.close)),
+                ],
+              ),
+            ),
+
+            // Actions selon le statut
+            ...(_buildClientActionButtons(client)),
+
+            SizedBox(height: 16),
+          ],
+        ),
       ),
-      child: Column(
+      isScrollControlled: true,
+    );
+  }
+
+  List<Widget> _buildClientActionButtons(ClientTournee client) {
+    switch (client.statutVisite) {
+      case StatutVisite.NON_VISITE:
+        return [
+          ListTile(
+            leading: Icon(Icons.play_circle, color: Colors.green),
+            title: Text('Démarrer la visite'),
+            onTap: () => _handleCheckin(client),
+          ),
+        ];
+
+      case StatutVisite.VISITE_EN_COURS:
+        return [
+          // ✅ CORRECTION : Navigation directe vers détail client
+          ListTile(
+            leading: Icon(Icons.visibility, color: Colors.blue),
+            title: Text('Voir détails visite'),
+            onTap: () {
+              Get.back(); // Fermer le bottom sheet
+              Get.toNamed('/client-details', arguments: {'client': client});
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.shopping_cart, color: Colors.blue),
+            title: Text('Créer une commande'),
+            onTap: () => _handleCreateOrder(client),
+          ),
+          ListTile(
+            leading: Icon(Icons.cancel, color: Colors.orange),
+            title: Text('Terminer sans commande'),
+            onTap: () => _handleCheckoutNoSale(client),
+          ),
+        ];
+
+      case StatutVisite.VISITE_TERMINEE:
+      case StatutVisite.COMMANDE_CREEE:
+        return [
+          ListTile(
+            leading: Icon(Icons.history, color: Colors.purple),
+            title: Text('Historique commandes'),
+            onTap: () {
+              Get.back();
+              _showOrderHistory(client);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.phone, color: Colors.orange),
+            title: Text('Appeler le client'),
+            onTap: () {
+              Get.back();
+              _callClient(client);
+            },
+          ),
+        ];
+    }
+  }
+
+  // ✅ CORRECTION PRINCIPALE : Navigation vers détail après check-in
+  void _handleCheckin(ClientTournee client) async {
+    Get.back(); // Fermer le bottom sheet
+    try {
+      // Dialog de loading
+      Get.dialog(
+        AlertDialog(
+          content: Row(children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Check-in...')
+          ]),
+        ),
+        barrierDismissible: false
+      );
+
+      // Effectuer le check-in
+      await controller.checkinClient(client.id!);
+
+      // Fermer le dialog de loading
+      Get.back();
+
+      // ✅ NOUVELLE PARTIE : Récupérer le client mis à jour et naviguer
+      // Le controller a déjà fait le refresh(), donc on récupère le client à jour
+      final updatedClient = controller.tourneeToday.value?.clients
+          .firstWhereOrNull((c) => c.id == client.id);
+          print(updatedClient);
+
+      if (updatedClient != null) {
+        // Navigation vers la page de détail avec le client mis à jour
+        Get.toNamed('/client-details', arguments: {'client': updatedClient});
+
+        // Snackbar de succès
+        Get.snackbar(
+          'Visite démarrée',
+          'Check-in effectué avec succès',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: Duration(seconds: 2),
+        );
+      } else {
+        throw Exception('Impossible de récupérer les données du client');
+      }
+
+    } catch (e) {
+      if (Get.isDialogOpen == true) Get.back();
+      Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
+
+  // Créer commande
+  void _handleCreateOrder(ClientTournee client) {
+    Get.back();
+    Get.toNamed('/order-create', arguments: {'client': client});
+  }
+
+  // Checkout sans vente
+  void _handleCheckoutNoSale(ClientTournee client) {
+    Get.back();
+    // Dialog pour motif
+    Get.dialog(AlertDialog(
+      title: Text('Visite sans commande'),
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: client.statutVisite.color,
-                  child: Icon(client.statutVisite.icon, color: Colors.white),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(client.customerName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(client.customerAddress, style: TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                IconButton(onPressed: () => Get.back(), icon: Icon(Icons.close)),
-              ],
-            ),
-          ),
-          
-          // Actions selon le statut
-          ...(_buildClientActionButtons(client)),
-          
-          SizedBox(height: 16),
+          ListTile(title: Text('Client absent'), onTap: () => _executeCheckoutNoSale(client, 'CLIENT_ABSENT')),
+          ListTile(title: Text('Pas de besoin'), onTap: () => _executeCheckoutNoSale(client, 'PAS_DE_BESOIN')),
+          ListTile(title: Text('Fermé'), onTap: () => _executeCheckoutNoSale(client, 'FERME')),
         ],
       ),
-    ),
-    isScrollControlled: true,
-  );
-}
-
-List<Widget> _buildClientActionButtons(ClientTournee client) {
-  switch (client.statutVisite) {
-    case StatutVisite.NON_VISITE:
-      return [
-        ListTile(
-          leading: Icon(Icons.play_circle, color: Colors.green),
-          title: Text('Démarrer la visite'),
-          onTap: () => _handleCheckin(client),
-        ),
-        ListTile(
-          leading: Icon(Icons.info_outline, color: Colors.blue),
-          title: Text('Voir les détails'),
-          onTap: () {
-            Get.back();
-            Get.toNamed('/client-details', arguments: {'client': client});
-          },
-        ),
-      ];
-      
-    case StatutVisite.VISITE_EN_COURS:
-      return [
-        ListTile(
-          leading: Icon(Icons.shopping_cart, color: Colors.blue),
-          title: Text('Créer une commande'),
-          onTap: () => _handleCreateOrder(client),
-        ),
-        ListTile(
-          leading: Icon(Icons.cancel, color: Colors.orange),
-          title: Text('Terminer sans commande'),
-          onTap: () => _handleCheckoutNoSale(client),
-        ),
-        ListTile(
-          leading: Icon(Icons.info_outline, color: Colors.grey),
-          title: Text('Voir les détails'),
-          onTap: () {
-            Get.back();
-            Get.toNamed('/client-details', arguments: {'client': client});
-          },
-        ),
-      ];
-      
-    case StatutVisite.VISITE_TERMINEE:
-    case StatutVisite.COMMANDE_CREEE:
-      return [
-        ListTile(
-          leading: Icon(Icons.history, color: Colors.purple),
-          title: Text('Historique commandes'),
-          onTap: () {
-            Get.back();
-            _showOrderHistory(client);
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.phone, color: Colors.orange),
-          title: Text('Appeler le client'),
-          onTap: () {
-            Get.back();
-            _callClient(client);
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.info_outline, color: Colors.blue),
-          title: Text('Voir les détails'),
-          onTap: () {
-            Get.back();
-            Get.toNamed('/client-details', arguments: {'client': client});
-          },
-        ),
-      ];
+    ));
   }
-}
 
-// Check-in
-void _handleCheckin(ClientTournee client) async {
-  Get.back();
-  try {
-    Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Check-in...')])), barrierDismissible: false);
-    await controller.checkinClient(client.id!);
+  void _executeCheckoutNoSale(ClientTournee client, String motif) async {
     Get.back();
-    
-    // ✅ Naviguer vers la page de détail client après le démarrage
-    Get.toNamed('/client-details', arguments: {'client': client});
-  } catch (e) {
-    Get.back();
-    Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    try {
+      Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Enregistrement...')])), barrierDismissible: false);
+
+      // ✅ CORRECTION : Utiliser le visiteId de la visite courante
+      final visiteId = client.currentVisite?.id;
+      if (visiteId == null) {
+        throw Exception('Aucune visite en cours trouvée');
+      }
+
+      await controller.checkoutWithoutOrder(visiteId, motif, null);
+      Get.back();
+      Get.snackbar('Visite terminée', 'Check-out effectué', backgroundColor: Colors.blue, colorText: Colors.white);
+    } catch (e) {
+      Get.back();
+      Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    }
   }
-}
-
-// Créer commande
-void _handleCreateOrder(ClientTournee client) {
-  Get.back();
-  Get.toNamed('/order-create', arguments: {'client': client});
-}
-
-// Checkout sans vente
-void _handleCheckoutNoSale(ClientTournee client) {
-  Get.back();
-  // Dialog pour motif
-  Get.dialog(AlertDialog(
-    title: Text('Visite sans commande'),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ListTile(title: Text('Client absent'), onTap: () => _executeCheckoutNoSale(client, 'CLIENT_ABSENT')),
-        ListTile(title: Text('Pas de besoin'), onTap: () => _executeCheckoutNoSale(client, 'PAS_DE_BESOIN')),
-        ListTile(title: Text('Fermé'), onTap: () => _executeCheckoutNoSale(client, 'FERME')),
-      ],
-    ),
-  ));
-}
-
-void _executeCheckoutNoSale(ClientTournee client, String motif) async {
-  Get.back();
-  try {
-    Get.dialog(AlertDialog(content: Row(children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Enregistrement...')])), barrierDismissible: false);
-    await controller.checkoutWithoutOrder(client.id!, motif, null);
-    Get.back();
-    Get.snackbar('Visite terminée', 'Check-out effectué', backgroundColor: Colors.blue, colorText: Colors.white);
-  } catch (e) {
-    Get.back();
-    Get.snackbar('Erreur', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
-  }
-}
-
 }

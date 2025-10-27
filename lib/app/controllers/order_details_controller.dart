@@ -26,15 +26,6 @@ class OrderDetailsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    print('=== INIT ORDER DETAILS CONTROLLER ===');
-    
-    // ✅ DEBUG: Afficher toutes les infos de navigation
-    print('🌐 URL actuelle: ${Get.currentRoute}');
-    print('📋 Paramètres Get: ${Get.parameters}');
-    print('📋 Arguments Get: ${Get.arguments}');
-    print('📋 Paramètres keys: ${Get.parameters.keys.toList()}');
-    print('📋 Paramètres values: ${Get.parameters.values.toList()}');
-    
     // ✅ SOLUTION ROBUSTE: Essayer plusieurs méthodes
     String? orderIdStr;
     

@@ -22,13 +22,11 @@ class OrderItem {
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
-    print('🔍 OrderItem.fromJson - Données reçues: $json');
-    
+
     // ✅ ÉTAPE 1: Parser le produit d'abord
     Product? itemProduct;
     if (json['product'] != null) {
       itemProduct = Product.fromJson(json['product']);
-      print('✅ Produit parsé: ${itemProduct.description}, prix: ${itemProduct.salesPrice}');
     }
     
     // ✅ ÉTAPE 2: Récupérer les données de base
@@ -41,12 +39,10 @@ class OrderItem {
     // 1. D'abord essayer depuis le produit (source principale)
     if (itemProduct != null) {
       itemPrice = itemProduct.salesPrice;
-      print('✅ Prix récupéré depuis product.salesPrice: $itemPrice');
     }
     // 2. Fallback sur le champ price direct (si existe)
     else if (json['price'] != null) {
       itemPrice = (json['price'] as num).toDouble();
-      print('✅ Prix récupéré depuis price direct: $itemPrice');
     }
     
     // ✅ ÉTAPE 4: Récupérer les autres infos depuis le produit
@@ -67,8 +63,6 @@ class OrderItem {
     if (json['discount'] != null) {
       itemDiscount = (json['discount'] as num).toDouble();
     }
-    
-    print('✅ OrderItem final - ProductId: $itemProductId, Prix: $itemPrice, Quantité: $itemQuantity, Total: ${itemPrice * itemQuantity}');
     
     return OrderItem(
       id: json['id'],

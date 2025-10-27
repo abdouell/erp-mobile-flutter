@@ -37,7 +37,6 @@ class AuthController extends GetxController {
       try {
         user.value = User.fromJson(userData);
         isAuthenticated.value = true;
-        print('Utilisateur déjà connecté: ${user.value?.displayName}');
       } catch (e) {
         print('Erreur chargement utilisateur sauvé: $e');
         _clearAuth();
@@ -55,9 +54,7 @@ class AuthController extends GetxController {
   isLoading.value = true;
   
   try {
-    print('=== AUTH CONTROLLER LOGIN ===');
-    print('Appel API avec: ${username.value} / ${password.value}');
-    
+
     final LoginResponse response = await _apiService.login(
       username.value.trim(),
       password.value,
@@ -80,7 +77,6 @@ class AuthController extends GetxController {
     Get.offAllNamed('/tournee');
     
   } catch (e) {
-    print('=== ERREUR AUTH CONTROLLER ===');
     print('Erreur: $e');
     
     // ✅ Affichage direct du message d'erreur

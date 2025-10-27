@@ -28,14 +28,9 @@ void onInit() {
       
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
-        print('✅ JWT ajouté: Bearer ${token.toString().substring(0, 20)}...');
       } else {
         print('❌ Pas de token JWT trouvé dans le storage !');
       }
-      
-      print('=== REQUEST DEBUG ===');
-      print('URL: ${options.uri}');
-      print('Headers: ${options.headers}');
       
       handler.next(options);
     },

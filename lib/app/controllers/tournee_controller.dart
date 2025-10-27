@@ -65,8 +65,7 @@ class TourneeController extends GetxController {
       final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(currentUser.id);
       vendeur.value = vendeurData;
       
-      print('Vendeur trouvé: ${vendeurData.nomComplet}');
-      
+
       // 3. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = tournee;
@@ -136,7 +135,8 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print('✅ Check-in effectué, visiteId: ${response.visiteId}');
+            print('✅ Check-in effectué, visiteId: ${response.statutVisite}');
+            print('✅ Check-in effectué, visiteId: ${response.visiteId}');
       
       // Recharger automatiquement la tournée pour avoir les données à jour
       await refresh();

@@ -12,17 +12,14 @@ class ProductService extends GetxService {
   /// Récupérer tous les produits
   Future<List<Product>> getAllProducts() async {
     try {
-      print('=== RÉCUPÉRATION PRODUITS ===');
-      
+
       // Utiliser le cache si disponible
       if (_cachedProducts != null) {
-        print('📦 Utilisation du cache produits (${_cachedProducts!.length} produits)');
         return _cachedProducts!;
       }
       
       final response = await _apiService.dio.get('/api/product');
-      print('✅ Réponse API: ${response.data?.length ?? 0} produits');
-      
+
       final List<dynamic> productsJson = response.data ?? [];
       final products = productsJson.map((json) => Product.fromJson(json)).toList();
       
@@ -61,7 +58,6 @@ class ProductService extends GetxService {
       
       categories.sort(); // Tri alphabétique
       
-      print('📂 Catégories disponibles: ${categories.length}');
       return categories;
       
     } catch (e) {
@@ -72,7 +68,6 @@ class ProductService extends GetxService {
   
   /// Vider le cache
   void clearCache() {
-    print('🗑️ Nettoyage cache produits');
     _cachedProducts = null;
   }
 
@@ -80,19 +75,15 @@ class ProductService extends GetxService {
 /// Utilisé pour les vendeurs conventionnels
 Future<List<Product>> getProductsByEmplacement(String emplacementCode) async {
   try {
-    print('=== RÉCUPÉRATION PRODUITS PAR EMPLACEMENT ===');
-    print('Emplacement: $emplacementCode');
-    
+
     final response = await _apiService.dio.get(
       '/api/product/emplacement/$emplacementCode/stock',
     );
     
-    print('✅ Réponse API: ${response.data?.length ?? 0} produits en stock');
-    
+
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();
     
-    print('📦 Produits en stock parsés: ${products.length}');
     return products;
     
   } on DioException catch (e) {

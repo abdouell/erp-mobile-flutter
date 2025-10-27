@@ -65,7 +65,8 @@ class TourneeController extends GetxController {
       final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(currentUser.id);
       vendeur.value = vendeurData;
       
-
+      print('Vendeur trouvé: ${vendeurData.nomComplet}');
+      
       // 3. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = tournee;
@@ -135,11 +136,57 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-            print('✅ Check-in effectué, visiteId: ${response.statutVisite}');
-            print('✅ Check-in effectué, visiteId: ${response.visiteId}');
+      print('✅ Check-in effectué, visiteId: ${response.visiteId}');
       
       // Recharger automatiquement la tournée pour avoir les données à jour
       await refresh();
+      
+      // 🔍 DEBUG : Afficher TOUS les clients avec leurs visites
+      print('🔍 ========== DEBUG APRÈS REFRESH ==========');
+      print('  tourneeToday existe: ${tourneeToday.value != null}');
+      if (tourneeToday.value != null) {
+        print('  Tournée ID: ${tourneeToday.value!.id}');
+        print('  Nombre total de clients: ${tourneeToday.value!.clients.length}');
+        print('  Nombre total de visites (tournée): ${tourneeToday.value!.nombreTotalVisites}');
+        print('');
+        print('  📋 DÉTAIL DE CHAQUE CLIENT:');
+        
+        for (var client in tourneeToday.value!.clients) {
+          print('  ┌─ Client ID=${client.id} - ${client.customerName}');
+          print('  │  Statut: ${client.statutVisite}');
+          print('  │  Nombre de visites: ${client.visites.length}');
+          
+          if (client.visites.isNotEmpty) {
+            for (var i = 0; i < client.visites.length; i++) {
+              final visite = client.visites[i];
+              print('  │  ├─ Visite ${i + 1}:');
+              print('  │  │  id: ${visite.id}');
+              print('  │  │  statut: ${visite.statutVisite}');
+              print('  │  │  checkin: ${visite.checkinAt}');
+              print('  │  │  checkout: ${visite.checkoutAt}');
+            }
+          } else {
+            print('  │  └─ Aucune visite');
+          }
+          print('  └─');
+        }
+        
+        print('');
+        print('  🎯 Client recherché (ID=$clientTourneeId):');
+        final targetClient = tourneeToday.value!.clients
+            .firstWhereOrNull((c) => c.id == clientTourneeId);
+        if (targetClient != null) {
+          print('     ✅ TROUVÉ');
+          print('     Visites: ${targetClient.visites.length}');
+          print('     Statut: ${targetClient.statutVisite}');
+        } else {
+          print('     ❌ NON TROUVÉ');
+        }
+      }
+      print('🔍 ==========================================');
+      
+      // ✅ IMPORTANT : Attendre que GetX propage la nouvelle valeur aux observateurs
+      await Future.delayed(Duration(milliseconds: 100));
       
     } catch (e) {
       print('❌ Erreur check-in: $e');

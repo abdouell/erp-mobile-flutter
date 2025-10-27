@@ -1,9 +1,46 @@
+import 'package:flutter/material.dart';
 import 'order_item.dart';
 
 enum OrderStatus {
   DRAFT,
   VALIDATED,
   CANCELLED,
+}
+
+/// ✅ Extension pour ajouter label et color à OrderStatus
+extension OrderStatusExtension on OrderStatus {
+  String get label {
+    switch (this) {
+      case OrderStatus.DRAFT:
+        return 'Brouillon';
+      case OrderStatus.VALIDATED:
+        return 'Validée';
+      case OrderStatus.CANCELLED:
+        return 'Annulée';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case OrderStatus.DRAFT:
+        return Colors.orange;
+      case OrderStatus.VALIDATED:
+        return Colors.green;
+      case OrderStatus.CANCELLED:
+        return Colors.red;
+    }
+  }
+
+  String get colorName {
+    switch (this) {
+      case OrderStatus.DRAFT:
+        return 'orange';
+      case OrderStatus.VALIDATED:
+        return 'green';
+      case OrderStatus.CANCELLED:
+        return 'red';
+    }
+  }
 }
 
 class Order {
@@ -135,6 +172,7 @@ class Order {
   
   bool get canEdit => isDraft;
   bool get canValidate => isDraft && orderDetails.isNotEmpty;
+
 
   String get statusDisplay {
     switch (status) {

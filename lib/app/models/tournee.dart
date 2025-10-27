@@ -201,12 +201,12 @@ class Tournee {
   // MÉTHODES STANDARD
   // ========================================
   
-  @override
-  String toString() {
-    return 'Tournee(id: $id, nom: $nom, date: $date, statut: $statut, '
-           'clients: $nombreClients, visites: $nombreTotalVisites, '
-           'commandes: $nombreCommandes)';
-  }
+  //@override
+  //String toString() {
+    //return 'Tournee(id: $id, nom: $nom, date: $date, statut: $statut, '
+      //     'clients: $nombreClients, visites: $nombreTotalVisites, '
+        //   'commandes: $nombreCommandes)';
+  //}
   
   @override
   bool operator ==(Object other) {

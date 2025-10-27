@@ -16,8 +16,8 @@ const List<Map<String, String>> MOTIFS_VISITE = [
 class ClientDetailView extends GetView<TourneeController> {
   @override
   Widget build(BuildContext context) {
-    // Récupérer le client depuis les arguments
-    final ClientTournee client = Get.arguments['client'];
+    // ✅ CHANGEMENT MAJEUR : Récupérer SEULEMENT l'ID depuis les arguments
+    final int clientTourneeId = Get.arguments['clientTourneeId'];
 
     return Scaffold(
       appBar: AppBar(
@@ -26,10 +26,42 @@ class ClientDetailView extends GetView<TourneeController> {
         foregroundColor: Colors.white,
       ),
       body: Obx(() {
-        // Récupérer le client mis à jour depuis le controller
-        final updatedClient = controller.tourneeToday.value?.clients
-            .firstWhere((c) => c.id == client.id, orElse: () => client) ?? client;
+        // ✅ SINGLE SOURCE OF TRUTH : Toujours récupérer depuis le controller
+        final client = controller.tourneeToday.value?.clients
+            .firstWhereOrNull((c) => c.id == clientTourneeId);
 
+        // 🔍 DEBUG : Logs détaillés
+        print('🔍 DEBUG CLIENT DETAIL VIEW:');
+        print('  clientTourneeId cherché: $clientTourneeId');
+        print('  tourneeToday existe: ${controller.tourneeToday.value != null}');
+        if (controller.tourneeToday.value != null) {
+          print('  Nombre de clients dans tournée: ${controller.tourneeToday.value!.clients.length}');
+          for (var c in controller.tourneeToday.value!.clients) {
+            print('    - Client ID=${c.id}, visites=${c.visites.length}');
+          }
+        }
+        print('  Client trouvé: ${client != null}');
+        if (client != null) {
+          print('  Client name: ${client.customerName}');
+          print('  Nombre de visites: ${client.visites.length}');
+          print('  Statut visite: ${client.statutVisite}');
+        }
+
+        // ✅ Si client pas encore chargé → afficher loader
+        if (client == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Chargement des informations client...'),
+              ],
+            ),
+          );
+        }
+
+        // ✅ Client trouvé → afficher l'interface
         return Column(
           children: [
             // Contenu principal avec scroll
@@ -37,16 +69,16 @@ class ClientDetailView extends GetView<TourneeController> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _buildClientHeader(updatedClient),
-                    _buildCurrentVisitSection(updatedClient),
-                    _buildVisitHistorySection(updatedClient),
+                    _buildClientHeader(client),
+                    _buildCurrentVisitSection(client),
+                    _buildVisitHistorySection(client),
                   ],
                 ),
               ),
             ),
             
             // Actions en bas (sticky)
-            _buildActionButtons(context, updatedClient),
+            _buildActionButtons(context, client),
           ],
         );
       }),
@@ -249,70 +281,71 @@ class ClientDetailView extends GetView<TourneeController> {
               if (currentVisite.checkinAt != null) ...[
                 _buildInfoRow(
                   Icons.login,
-                  'Début',
+                  'Check-in',
                   _formatDateTime(currentVisite.checkinAt!),
+                  Colors.green,
                 ),
                 SizedBox(height: 8),
-              ],
-              
-              if (currentVisite.isInProgress) ...[
-                _buildInfoRow(
-                  Icons.timer,
-                  'Durée',
-                  currentVisite.formattedElapsedTime,
-                ),
               ],
               
               if (currentVisite.checkoutAt != null) ...[
                 _buildInfoRow(
                   Icons.logout,
-                  'Fin',
+                  'Check-out',
                   _formatDateTime(currentVisite.checkoutAt!),
+                  Colors.red,
                 ),
                 SizedBox(height: 8),
-                _buildInfoRow(
-                  Icons.schedule,
-                  'Durée totale',
-                  currentVisite.formattedDuration,
-                ),
               ],
               
-              if (currentVisite.hasMotif) ...[
+              if (currentVisite.formattedDuration.isNotEmpty) ...[
+                _buildInfoRow(
+                  Icons.timer,
+                  'Durée',
+                  currentVisite.formattedDuration,
+                  Colors.blue,
+                ),
                 SizedBox(height: 8),
+              ],
+              
+              if (currentVisite.motifVisite != null && currentVisite.motifVisite!.isNotEmpty) ...[
                 _buildInfoRow(
                   Icons.info_outline,
                   'Motif',
-                  currentVisite.motifVisite ?? '',
+                  currentVisite.motifVisite!,
+                  Colors.orange,
                 ),
+                SizedBox(height: 8),
               ],
               
-              if (currentVisite.hasNote) ...[
+              if (currentVisite.noteVisite != null && currentVisite.noteVisite!.isNotEmpty) ...[
+                Divider(),
                 SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Note:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.note, size: 20, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Note',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            currentVisite.noteVisite!,
+                            style: TextStyle(fontStyle: FontStyle.italic),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        currentVisite.noteVisite ?? '',
-                        style: TextStyle(fontStyle: FontStyle.italic),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -322,16 +355,24 @@ class ClientDetailView extends GetView<TourneeController> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey.shade600),
+        Icon(icon, size: 20, color: color),
         SizedBox(width: 8),
         Text(
           '$label: ',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade700,
+          ),
         ),
-        Text(value),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(color: Colors.grey.shade800),
+          ),
+        ),
       ],
     );
   }
@@ -341,61 +382,89 @@ class ClientDetailView extends GetView<TourneeController> {
   // ========================================
 
   Widget _buildVisitHistorySection(ClientTournee client) {
-    if (client.visitCount <= 1) {
-      return SizedBox.shrink();
-    }
+    final visites = client.visites;
 
-    // Exclure la visite courante de l'historique
-    final historique = client.visites
-        .where((v) => v.id != client.currentVisite?.id)
-        .toList()
-        .reversed
-        .toList();
-
-    if (historique.isEmpty) {
+    if (visites.isEmpty) {
       return SizedBox.shrink();
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Historique des visites',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           SizedBox(height: 12),
-          ...historique.map((visite) => _buildHistoryCard(visite)),
+          ...visites.map((visite) => _buildVisiteCard(visite)).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildHistoryCard(Visite visite) {
+  Widget _buildVisiteCard(Visite visite) {
     return Card(
       margin: EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: visite.statutVisite.color,
-          child: Icon(visite.statutVisite.icon, color: Colors.white, size: 20),
-        ),
-        title: Text(visite.statutVisite.label),
-        subtitle: Column(
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Icon(
+                  visite.statutVisite.icon,
+                  color: visite.statutVisite.color,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  visite.statutVisite.label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: visite.statutVisite.color,
+                  ),
+                ),
+                Spacer(),
+                if (visite.formattedDuration.isNotEmpty)
+                  Chip(
+                    label: Text(
+                      visite.formattedDuration,
+                      style: TextStyle(fontSize: 11),
+                    ),
+                    backgroundColor: Colors.grey.shade200,
+                    padding: EdgeInsets.zero,
+                  ),
+              ],
+            ),
+            SizedBox(height: 8),
             if (visite.checkinAt != null)
-              Text('${_formatDateTime(visite.checkinAt!)}'),
-            if (visite.formattedDuration.isNotEmpty)
-              Text('Durée: ${visite.formattedDuration}'),
-            if (visite.hasMotif)
-              Text('Motif: ${visite.motifVisite}', 
-                style: TextStyle(fontStyle: FontStyle.italic)),
+              Text(
+                'Check-in: ${_formatDateTime(visite.checkinAt!)}',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              ),
+            if (visite.checkoutAt != null)
+              Text(
+                'Check-out: ${_formatDateTime(visite.checkoutAt!)}',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              ),
+            if (visite.motifVisite != null && visite.motifVisite!.isNotEmpty) ...[
+              SizedBox(height: 4),
+              Text(
+                'Motif: ${visite.motifVisite}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.orange.shade700,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ],
-        ),
-        trailing: Icon(
-          visite.hasOrder ? Icons.shopping_cart : Icons.close,
-          color: visite.hasOrder ? Colors.green : Colors.orange,
         ),
       ),
     );
@@ -407,6 +476,7 @@ class ClientDetailView extends GetView<TourneeController> {
 
   Widget _buildActionButtons(BuildContext context, ClientTournee client) {
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -670,4 +740,3 @@ class ClientDetailView extends GetView<TourneeController> {
     }
   }
 }
-

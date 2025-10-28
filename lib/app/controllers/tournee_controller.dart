@@ -69,16 +69,48 @@ class TourneeController extends GetxController {
       
       // 3. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
-      tourneeToday.value = tournee;
+          tourneeToday.value = null; // Force un changement
+         tourneeToday.value = tournee; // Réassignation
+
+      print('[AFTER ASSIGN] local.visites=${tournee?.clients.first.visites.length}');
+tourneeToday.value = tournee;
+print('[AFTER ASSIGN] rx.visites=${tourneeToday.value!.clients.first.visites.length}');
+
+// ... tout code entre-deux
+print('[BEFORE ZERO] rx.visites=${tourneeToday.value!.clients.first.visites.length}');
       
       if (tournee != null) {
         print('Tournée du jour: ${tournee.id} - ${tournee.statut}');
         print('  → ${tournee.nombreClients} clients');
         print('  → ${tournee.nombreTotalVisites} visites');
+        print(' tourneeToday → ${tourneeToday.value?.nombreTotalVisites} visites');
         print('  → ${tournee.nombreCommandes} commandes');
+
+                for (var client in tournee.clients) {
+          print('  ┌─ Client ID=${client.id} - ${client.customerName}');
+          print('  │  Statut: ${client.statutVisite}');
+          print('  │  Nombre de visites: ${client.visites.length}');
+          
+          if (client.visites.isNotEmpty) {
+            for (var i = 0; i < client.visites.length; i++) {
+              final visite = client.visites[i];
+              print('  │  ├─ Visite ${i + 1}:');
+              print('  │  │  id: ${visite.id}');
+              print('  │  │  statut: ${visite.statutVisite}');
+              print('  │  │  checkin: ${visite.checkinAt}');
+              print('  │  │  checkout: ${visite.checkoutAt}');
+            }
+          } else {
+            print('  │  └─ Aucune visite');
+          }
+          print('  └─');
+        }
+
       } else {
         print('Pas de tournée aujourd\'hui');
       }
+
+        print('=== FINCHARGEMENT TOURNEE DATA ===');
       
     } catch (e) {
       print('Erreur chargement tournée: $e');

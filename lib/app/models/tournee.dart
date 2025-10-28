@@ -99,7 +99,7 @@ class Tournee {
   
   /// Nombre total de visites dans la tournée (toutes visites confondues)
   int get nombreTotalVisites {
-    return clients.fold(0, (sum, client) => sum + client.visitCount);
+    return clients.fold(0, (sum, c) => sum + c.visites.length);
   }
   
   /// Nombre total de commandes créées dans la tournée

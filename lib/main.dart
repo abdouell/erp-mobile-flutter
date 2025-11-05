@@ -43,10 +43,22 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'DistriMob',
+@override
+Widget build(BuildContext context) {
+  return Center(
+    child: Container(
+      constraints: BoxConstraints(maxWidth: 430),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: GetMaterialApp(
+        title: 'DistriMob',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
@@ -170,6 +182,8 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+    ),
+  );
+}
 }

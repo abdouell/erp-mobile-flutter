@@ -5,7 +5,8 @@ class Tournee {
   final String nom;
   final String code;
   final DateTime date;
-  final String statut;
+  final DateTime? affectationDate;
+  final String? affectationStatut;
   final int vendeurId;
   final List<ClientTournee> clients;
   
@@ -14,7 +15,8 @@ class Tournee {
     required this.nom,
     required this.code,
     required this.date,
-    required this.statut,
+    this.affectationDate,
+    this.affectationStatut,
     required this.vendeurId,
     this.clients = const [],
   });
@@ -24,12 +26,21 @@ class Tournee {
   // ========================================
   
   factory Tournee.fromJson(Map<String, dynamic> json) {
+    final String? affectationDateStr = json['affectationDate'] as String?;
+    final String? dateStr = json['date'] as String?;
+    final DateTime? parsedAffectation = (affectationDateStr != null && affectationDateStr.isNotEmpty)
+        ? DateTime.parse(affectationDateStr)
+        : null;
+    final DateTime parsedDate = parsedAffectation
+        ?? ((dateStr != null && dateStr.isNotEmpty) ? DateTime.parse(dateStr) : DateTime.now());
+
     return Tournee(
       id: json['id'],
       nom: json['nom'],
       code: json['code'],
-      date: DateTime.parse(json['date']),
-      statut: json['statut'],
+      date: parsedDate,
+      affectationDate: parsedAffectation,
+      affectationStatut: json['affectationStatut'] as String?,
       vendeurId: json['vendeurId'],
       clients: json['clients'] != null
           ? (json['clients'] as List)
@@ -49,7 +60,8 @@ class Tournee {
       'nom': nom,
       'code': code,
       'date': date.toIso8601String(),
-      'statut': statut,
+      if (affectationDate != null) 'affectationDate': affectationDate!.toIso8601String(),
+      if (affectationStatut != null) 'affectationStatut': affectationStatut,
       'vendeurId': vendeurId,
       'clients': clients.map((c) => c.toJson()).toList(),
     };
@@ -67,9 +79,10 @@ class Tournee {
   // HELPERS DE STATUT
   // ========================================
   
-  bool get estPlanifiee => statut == PLANIFIEE;
-  bool get estEnCours => statut == EN_COURS;
-  bool get estTerminee => statut == TERMINEE;
+  String get _statutCourant => affectationStatut ?? PLANIFIEE;
+  bool get estPlanifiee => _statutCourant == PLANIFIEE;
+  bool get estEnCours => _statutCourant == EN_COURS;
+  bool get estTerminee => _statutCourant == TERMINEE;
   
   // ========================================
   // STATISTIQUES - CLIENTS
@@ -182,7 +195,8 @@ class Tournee {
     String? nom,
     String? code,
     DateTime? date,
-    String? statut,
+    DateTime? affectationDate,
+    String? affectationStatut,
     int? vendeurId,
     List<ClientTournee>? clients,
   }) {
@@ -191,7 +205,8 @@ class Tournee {
       nom: nom ?? this.nom,
       code: code ?? this.code,
       date: date ?? this.date,
-      statut: statut ?? this.statut,
+      affectationDate: affectationDate ?? this.affectationDate,
+      affectationStatut: affectationStatut ?? this.affectationStatut,
       vendeurId: vendeurId ?? this.vendeurId,
       clients: clients ?? this.clients,
     );

@@ -82,12 +82,13 @@ class ClientsView extends GetView<TourneeController> {
             ),
           ),
         ),
-        if (tournee.statut != Tournee.TERMINEE) _buildClotureTourneeButton(tournee),
+        if ((tournee.affectationStatut ?? Tournee.PLANIFIEE) != Tournee.TERMINEE) _buildClotureTourneeButton(tournee),
       ],
     );
   }
 
   Widget _buildTourneeHeader(Tournee tournee) {
+    final dateToShow = tournee.affectationDate ?? tournee.date;
     return Container(
       width: double.infinity,
       color: Colors.blue.shade50,
@@ -95,7 +96,7 @@ class ClientsView extends GetView<TourneeController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tournée du ${_formatDate(tournee.date)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Affectation du ${_formatDate(dateToShow)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           SizedBox(height: 8),
           Row(
             children: [

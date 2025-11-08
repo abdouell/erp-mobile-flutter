@@ -70,13 +70,16 @@ class TourneeService extends GetxService {
     }
   }
 
-  /// Clôturer une tournée
-  Future<Tournee> clotureTournee(int tourneeId) async {
+  /// Clôturer une tournée (affectation-aware)
+  Future<Tournee> clotureTournee(int tourneeId, int vendeurId) async {
     try {
       print('🔒 Clôture tournée $tourneeId');
       
       final response = await _apiService.dio.post(
         '/api/tournee/$tourneeId/cloture',
+        queryParameters: {
+          'vendeurId': vendeurId,
+        },
       );
       
       print('✅ Tournée clôturée avec succès');
@@ -112,10 +115,11 @@ class TourneeService extends GetxService {
   // ========================================
 
   /// ✅ Check-in client (crée une nouvelle visite et fait le check-in)
-  /// Endpoint: POST /api/tournee/client/{clientTourneeId}/checkin
+  /// Endpoint: POST /api/tournee/client/{clientTourneeId}/checkin?vendeurId={id}
   /// Retourne: VisitStatusResponse avec le visiteId créé
   Future<VisitStatusResponse> checkinCustomer(
-    int clientTourneeId, 
+    int clientTourneeId,
+    int vendeurId, 
     {double? latitude, double? longitude}
   ) async {
     try {
@@ -132,6 +136,9 @@ class TourneeService extends GetxService {
       
       final response = await _apiService.dio.post(
         '/api/tournee/client/$clientTourneeId/checkin',
+        queryParameters: {
+          'vendeurId': vendeurId,
+        },
         data: request.toJson(),
       );
       
@@ -147,6 +154,14 @@ class TourneeService extends GetxService {
       if (e.response?.statusCode == 404) {
         throw Exception('Client de tournée introuvable');
       } else if (e.response?.statusCode == 400) {
+        final code = e.response?.data is Map<String, dynamic>
+            ? (e.response?.data['code'] as String?)
+            : null;
+        if (code == 'VENDEUR_ID_REQUIRED') {
+          throw Exception('Identifiant vendeur manquant');
+        } else if (code == 'AFFECTATION_NOT_FOUND') {
+          throw Exception('Aucune affectation pour ce vendeur sur cette tournée aujourd\'hui');
+        }
         throw Exception('Impossible de démarrer la visite dans l\'état actuel');
       } else if (e.response?.statusCode == 403) {
         throw Exception('Accès refusé pour ce client');

@@ -224,7 +224,7 @@ class TourneeView extends GetView<TourneeController> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 Spacer(),
-                _buildStatutChip(tournee.statut),
+                _buildStatutChip(tournee.affectationStatut ?? 'PLANIFIEE'),
               ],
             ),
             
@@ -288,9 +288,10 @@ class TourneeView extends GetView<TourneeController> {
   }
   
 Widget _buildTourneeInfo(Tournee tournee) {
+  final dateToShow = tournee.affectationDate ?? tournee.date;
   return Column(
     children: [
-      _buildInfoRow(Icons.date_range, 'Date', _formatDate(tournee.date)),
+      _buildInfoRow(Icons.date_range, 'Date affectation', _formatDate(dateToShow)),
       SizedBox(height: 8),
       _buildInfoRow(Icons.tag, 'Tournée', '#${tournee.id}'),
       SizedBox(height: 8),

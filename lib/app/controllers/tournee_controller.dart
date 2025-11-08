@@ -69,21 +69,15 @@ class TourneeController extends GetxController {
       
       // 3. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
-          tourneeToday.value = null; // Force un changement
-         tourneeToday.value = tournee; // Réassignation
-
-      print('[AFTER ASSIGN] local.visites=${tournee?.clients.first.visites.length}');
-tourneeToday.value = tournee;
-print('[AFTER ASSIGN] rx.visites=${tourneeToday.value!.clients.first.visites.length}');
-
-// ... tout code entre-deux
-print('[BEFORE ZERO] rx.visites=${tourneeToday.value!.clients.first.visites.length}');
+      tourneeToday.value = null; // Force un changement
+      tourneeToday.value = tournee; // Réassignation
       
       if (tournee != null) {
-        print('Tournée du jour: ${tournee.id} - ${tournee.statut}');
+        final statut = tournee.affectationStatut ?? 'PLANIFIEE';
+        print('Tournée du jour: ${tournee.id} - $statut');
         print('  → ${tournee.nombreClients} clients');
         print('  → ${tournee.nombreTotalVisites} visites');
-        print(' tourneeToday → ${tourneeToday.value?.nombreTotalVisites} visites');
+        print('  tourneeToday → ${tourneeToday.value?.nombreTotalVisites} visites');
         print('  → ${tournee.nombreCommandes} commandes');
 
                 for (var client in tournee.clients) {
@@ -164,15 +158,18 @@ print('[BEFORE ZERO] rx.visites=${tourneeToday.value!.clients.first.visites.leng
       // Appel API - crée une nouvelle visite et fait le check-in
       final response = await _tourneeService.checkinCustomer(
         clientTourneeId,
+        vendeur.value!.id,
         latitude: position?.latitude,
         longitude: position?.longitude,
       );
       
-      print('✅ Check-in effectué, visiteId: ${response.visiteId}');
+      print(' Check-in effectué, visiteId: ${response.visiteId}');
       
       // Recharger automatiquement la tournée pour avoir les données à jour
       await refresh();
       
+      // DEBUG : Afficher TOUS les clients avec leurs visites
+      print(' ========== DEBUG APRÈS REFRESH ==========');
       // 🔍 DEBUG : Afficher TOUS les clients avec leurs visites
       print('🔍 ========== DEBUG APRÈS REFRESH ==========');
       print('  tourneeToday existe: ${tourneeToday.value != null}');
@@ -294,7 +291,7 @@ print('[BEFORE ZERO] rx.visites=${tourneeToday.value!.clients.first.visites.leng
       print('🔒 Clôture tournée $tourneeId');
       
       // Appel API
-      await _tourneeService.clotureTournee(tourneeId);
+      await _tourneeService.clotureTournee(tourneeId, vendeur.value!.id);
       
       print('✅ Tournée clôturée avec succès');
       

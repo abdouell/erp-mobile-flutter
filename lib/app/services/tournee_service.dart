@@ -71,7 +71,7 @@ class TourneeService extends GetxService {
   }
 
   /// Clôturer une tournée (affectation-aware)
-  Future<Tournee> clotureTournee(int tourneeId, int vendeurId) async {
+  Future<void> clotureTournee(int tourneeId, int vendeurId) async {
     try {
       print('🔒 Clôture tournée $tourneeId');
       
@@ -83,7 +83,7 @@ class TourneeService extends GetxService {
       );
       
       print('✅ Tournée clôturée avec succès');
-      return Tournee.fromJson(response.data);
+      return;
       
     } on DioException catch (e) {
       print('❌ Erreur clôture tournée: ${e.response?.statusCode}');

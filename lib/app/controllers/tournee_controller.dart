@@ -289,9 +289,13 @@ class TourneeController extends GetxController {
   Future<void> cloturerTournee(int tourneeId) async {
     try {
       print('🔒 Clôture tournée $tourneeId');
+      if (vendeur.value == null) {
+        throw Exception('Vendeur introuvable dans le contexte');
+      }
+      final int vendeurId = vendeur.value!.id;
       
       // Appel API
-      await _tourneeService.clotureTournee(tourneeId, vendeur.value!.id);
+      await _tourneeService.clotureTournee(tourneeId, vendeurId);
       
       print('✅ Tournée clôturée avec succès');
       

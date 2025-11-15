@@ -71,10 +71,21 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    // Gestion robuste de la date de création qui peut être null ou absente
+    final dynamic createdDateValue = json['createdDate'];
+    DateTime parsedCreatedDate;
+
+    if (createdDateValue is String && createdDateValue.isNotEmpty) {
+      parsedCreatedDate = DateTime.parse(createdDateValue);
+    } else {
+      // Fallback : si le backend renvoie une date null/absente, on prend la date courante
+      parsedCreatedDate = DateTime.now();
+    }
+
     return Order(
       id: json['id'],
       userId: json['userId'],
-      createdDate: DateTime.parse(json['createdDate']),
+      createdDate: parsedCreatedDate,
       status: OrderStatus.values.firstWhere(
         (e) => e.name == json['status'],
         orElse: () => OrderStatus.DRAFT,

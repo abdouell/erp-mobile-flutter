@@ -7,20 +7,27 @@ import '../models/product.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
 import '../models/client_tournee.dart';
+import '../models/sale_request.dart';
+import '../models/sale_line.dart';
+import '../models/sale_response.dart';
+import '../models/sales_document_history.dart';
 import '../services/product_service.dart';
 import '../services/order_service.dart';
+import '../services/sales_service.dart';
 import 'auth_controller.dart';
 
 class OrderController extends GetxController {
   // Services
   final ProductService _productService = Get.find<ProductService>();
   final OrderService _orderService = Get.find<OrderService>();
+  final SalesService _salesService = Get.find<SalesService>();
   final AuthController _authController = Get.find<AuthController>();
   
   // États réactifs - LOADING
   final isLoadingProducts = false.obs;
   final isSavingOrder = false.obs;
   final isValidatingOrder = false.obs;
+  final isLoadingHistory = false.obs;
   
   // États réactifs - ERREURS
   final hasError = false.obs;
@@ -41,6 +48,9 @@ class OrderController extends GetxController {
   final cartItems = <OrderItem>[].obs;
   final cartTotal = 0.0.obs;
   final cartItemCount = 0.obs;
+
+  // États réactifs - HISTORIQUE UNIFIÉ (ORDER + BL)
+  final salesHistory = <SalesDocumentHistory>[].obs;
   
   @override
   void onInit() {
@@ -385,36 +395,6 @@ void addToCart(Product product, {int quantity = 1}) {
     cartTotal.value = cartItems.fold(0.0, (sum, item) => sum + item.subtotalAfterDiscount);
   }
   
-  /// 💾 SAUVEGARDER COMMANDE (BROUILLON)
-  Future<void> saveOrderAsDraft() async {
-    try {
-      if (!_canSaveOrder()) return;
-      
-      isSavingOrder.value = true;
-      
-      // Mettre à jour la commande avec les items du panier
-      final updatedOrder = currentOrder.value!.copyWith(
-        orderDetails: cartItems.toList(),
-        totalAmount: cartTotal.value,
-      );
-      
-      await _orderService.saveOrder(updatedOrder);
-      
-      Get.snackbar(
-        'Brouillon sauvegardé',
-        'Commande sauvegardée avec succès',
-        backgroundColor: Get.theme.colorScheme.primary,
-        colorText: Get.theme.colorScheme.onPrimary,
-      );
-      
-      print('✅ Commande sauvegardée en brouillon');
-      
-    } catch (e) {
-      _handleError('Erreur sauvegarde', e);
-    } finally {
-      isSavingOrder.value = false;
-    }
-  }
   
 /// ✅ VALIDER COMMANDE - AVEC CHECKOUT AUTOMATIQUE
 Future<void> validateOrder() async {
@@ -458,27 +438,71 @@ Future<void> validateOrder() async {
     
     print('💾 Commande à valider: $finalOrder');
     print('💬 Commentaire: "${finalOrder.comment}"');
-    
-    // 1. SAUVEGARDE DE LA COMMANDE
-    Order savedOrder = await _orderService.saveOrder(
-      finalOrder, 
-      clientTourneeId: selectedClient.value?.id
+
+    // Construire SaleRequest pour la façade /api/sales
+    final user = _authController.user.value;
+    if (user == null) {
+      throw Exception('Utilisateur non connecté');
+    }
+
+    if (selectedClient.value == null) {
+      throw Exception('Aucun client sélectionné');
+    }
+
+    final saleRequest = SaleRequest(
+      userId: user.id,
+      customerId: selectedClient.value!.customerId,
+      lines: cartItems
+          .map((item) => SaleLine(
+                productId: item.productId,
+                quantity: item.quantity,
+                designation: item.productName,
+              ))
+          .toList(),
+      comment: finalOrder.comment,
+      clientTourneeId: selectedClient.value!.id,
+      latitude: latitude,
+      longitude: longitude,
     );
-    
-    print('✅ Sauvegarde serveur réussie: $savedOrder');
-    
-    // 2. MISE À JOUR DE L'ÉTAT LOCAL
-    currentOrder.value = savedOrder;
-    print('✅ Commande locale mise à jour avec ID: ${savedOrder.id}');
+
+    print('📤 Envoi de la vente via /api/sales: ${saleRequest.toJson()}');
+
+    // 1. APPEL FAÇADE SALES
+    final SaleResponse saleResponse = await _salesService.createSale(saleRequest);
+
+    print('✅ Réponse façade Sales: ${saleResponse.documentType} #${saleResponse.documentNumber}');
+
+    // 2. MISE À JOUR DE L'ÉTAT LOCAL (si ORDER)
+    if (saleResponse.documentType == 'ORDER') {
+      currentOrder.value = finalOrder.copyWith(
+        id: saleResponse.documentId,
+        status: OrderStatus.values.firstWhere(
+          (s) => s.name == saleResponse.status,
+          orElse: () => OrderStatus.VALIDATED,
+        ),
+      );
+      print('✅ Commande locale mise à jour avec ID: ${saleResponse.documentId}');
+    } else {
+      // Pour BL, on garde seulement le contexte local pour l'instant
+      currentOrder.value = finalOrder;
+      print('ℹ️ Document BL créé côté serveur (ID: ${saleResponse.documentId})');
+    }
     
     // 3. VIDER LE PANIER
     print('🗑️ Vidage du panier après succès...');
     clearCart();
     
     // 4. MESSAGE DE SUCCÈS
+    final successTitle = saleResponse.documentType == 'ORDER'
+        ? 'Commande validée ! 🎉'
+        : 'BL créé ! 🎉';
+
+    final successMessage =
+        '${saleResponse.documentType} #${saleResponse.documentNumber} (${saleResponse.status})';
+
     Get.snackbar(
-      'Commande validée ! 🎉',
-      'Commande #${savedOrder.id} validée avec succès',
+      successTitle,
+      successMessage,
       backgroundColor: Colors.green,
       colorText: Colors.white,
       icon: Icon(Icons.check_circle, color: Colors.white),
@@ -494,8 +518,9 @@ Future<void> validateOrder() async {
     }
     
     Get.toNamed('/order-confirmation', arguments: {
-      'order': savedOrder,
+      'order': currentOrder.value,
       'client': selectedClient.value,
+      'sale': saleResponse,
     });
 
     // ✅ NOUVEAU : Rafraîchir le TourneeController
@@ -682,6 +707,36 @@ void clearCart() {
   Future<void> refresh() async {
     _productService.clearCache();
     await _loadInitialData();
+  }
+
+  /// 📜 CHARGER L'HISTORIQUE UNIFIÉ (ORDER + BL)
+  Future<void> loadSalesHistory() async {
+    try {
+      isLoadingHistory.value = true;
+
+      final user = _authController.user.value;
+      if (user == null) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      print('📜 Chargement de l\'historique des ventes pour user ${user.id}');
+
+      final history = await _salesService.getUserHistory(user.id);
+
+      salesHistory.value = history;
+
+      print('✅ Historique chargé: ${history.length} documents');
+    } catch (e) {
+      print('❌ Erreur chargement historique ventes: $e');
+      Get.snackbar(
+        'Erreur',
+        'Impossible de charger l\'historique des ventes',
+        backgroundColor: Get.theme.colorScheme.error,
+        colorText: Get.theme.colorScheme.onError,
+      );
+    } finally {
+      isLoadingHistory.value = false;
+    }
   }
   
   /// 📂 CHANGER CATÉGORIE

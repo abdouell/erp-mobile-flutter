@@ -2,6 +2,8 @@ import 'package:erp_mobile/app/controllers/order_controller.dart';
 import 'package:erp_mobile/app/controllers/tournee_controller.dart';
 import 'package:erp_mobile/app/models/client_tournee.dart';
 import 'package:erp_mobile/app/models/order.dart';
+import 'package:erp_mobile/app/models/sale_response.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -12,10 +14,11 @@ class OrderConfirmationView extends StatelessWidget {
     final Map<String, dynamic> args = Get.arguments ?? {};
     final Order order = args['order'];
     final ClientTournee client = args['client'];
+    final SaleResponse? sale = args['sale'];
 
     return Scaffold(
       appBar: _buildAppBar(),
-      body: _buildBody(order, client),
+      body: _buildBody(order, client, sale),
       bottomNavigationBar: _buildBottomBar(order, client),
     );
   }
@@ -32,15 +35,15 @@ class OrderConfirmationView extends StatelessWidget {
   }
   
   /// 📱 BODY PRINCIPAL
-  Widget _buildBody(Order order, ClientTournee client) {
+  Widget _buildBody(Order order, ClientTournee client, SaleResponse? sale) {
     return SingleChildScrollView(
       child: Column(
         children: [
           // Animation succès
-          _buildSuccessHeader(order),
+          _buildSuccessHeader(order, sale),
           
           // Info commande
-          _buildOrderInfo(order, client),
+          _buildOrderInfo(order, client, sale),
           
           // Récapitulatif articles
           _buildOrderSummary(order),
@@ -53,7 +56,7 @@ class OrderConfirmationView extends StatelessWidget {
   }
   
   /// ✅ HEADER SUCCÈS
-  Widget _buildSuccessHeader(Order order) {
+  Widget _buildSuccessHeader(Order order, SaleResponse? sale) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(32),
@@ -101,7 +104,7 @@ class OrderConfirmationView extends StatelessWidget {
           
           // Titre succès
           Text(
-            'Commande validée !',
+            sale?.documentType == 'BL' ? 'BL créé !' : 'Commande validée !',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -112,9 +115,21 @@ class OrderConfirmationView extends StatelessWidget {
           
           SizedBox(height: 8),
           
-          // Numéro commande
+          // Numéro document (ORDER ou BL)
           Text(
-            'Commande #${order.id}',
+            () {
+              if (sale != null) {
+                final docNumber = sale.documentNumber;
+                // Si le numéro de document est null, on affiche seulement le type ou un fallback sur l'id
+                if (docNumber == null || docNumber.isEmpty) {
+                  return sale.documentId != 0
+                      ? '${sale.documentType} #${sale.documentId}'
+                      : sale.documentType;
+                }
+                return '${sale.documentType} #$docNumber';
+              }
+              return order.id != null ? 'Commande #${order.id}' : 'Commande';
+            }(),
             style: TextStyle(
               fontSize: 18,
               color: Colors.white.withOpacity(0.9),
@@ -125,7 +140,9 @@ class OrderConfirmationView extends StatelessWidget {
           
           // Date
           Text(
-            'Créée le ${order.formattedDate}',
+            sale != null
+                ? 'Créé le ${_formatSaleDate(sale.createdDate)}'
+                : 'Créée le ${order.formattedDate}',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white.withOpacity(0.8),
@@ -137,7 +154,7 @@ class OrderConfirmationView extends StatelessWidget {
   }
   
   /// ℹ️ INFO COMMANDE
-  Widget _buildOrderInfo(Order order, ClientTournee client) {
+  Widget _buildOrderInfo(Order order, ClientTournee client, SaleResponse? sale) {
     return Container(
       margin: EdgeInsets.all(16),
       child: Card(
@@ -215,7 +232,7 @@ class OrderConfirmationView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      order.statusDisplay,
+                      sale?.status ?? order.statusDisplay,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -232,6 +249,98 @@ class OrderConfirmationView extends StatelessWidget {
     );
   }
   
+  /// 📱 BOTTOM BAR
+  Widget _buildBottomBar(Order order, ClientTournee client) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ✅ Première ligne de boutons
+          Row(
+            children: [
+              // Bouton Nouvelle commande
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _createNewOrder(client),
+                  icon: Icon(Icons.add_shopping_cart),
+                  label: Text('Nouvelle commande'),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              
+              SizedBox(width: 12),
+              
+              // ✅ Bouton Mes commandes
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _goToOrdersList(),
+                  icon: Icon(Icons.receipt_long),
+                  label: Text('Mes commandes'),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          SizedBox(height: 12),
+          
+          // ✅ Deuxième ligne - Bouton principal
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _returnToClients(),
+              icon: Icon(Icons.people),
+              label: Text('Retour aux clients'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _goToOrdersList() {
+    // Nettoyer la session
+    final orderController = Get.find<OrderController>();
+    orderController.clearOrder();
+    
+    // Aller à la liste des commandes
+    Get.offNamedUntil(
+      '/orders',
+      (route) => route.settings.name == '/tournee',
+    );
+  }
+
+  String _formatSaleDate(DateTime dateTime) {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+  }
+
   /// 📄 LIGNE INFO
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
@@ -261,7 +370,7 @@ class OrderConfirmationView extends StatelessWidget {
       ],
     );
   }
-  
+
   /// 📊 RÉCAPITULATIF COMMANDE
   Widget _buildOrderSummary(Order order) {
     return Container(
@@ -344,7 +453,7 @@ class OrderConfirmationView extends StatelessWidget {
       ),
     );
   }
-  
+
   /// 📈 CARD STATISTIQUE
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
@@ -377,7 +486,7 @@ class OrderConfirmationView extends StatelessWidget {
       ),
     );
   }
-  
+
   /// 📄 LIGNE RÉCAPITULATIF
   Widget _buildSummaryRow(
     String label,
@@ -407,7 +516,7 @@ class OrderConfirmationView extends StatelessWidget {
       ],
     );
   }
-  
+
   /// ⚡ ACTIONS RAPIDES
   Widget _buildQuickActions(Order order) {
     return Container(
@@ -469,83 +578,7 @@ class OrderConfirmationView extends StatelessWidget {
       ),
     );
   }
-  
-  /// 📱 BOTTOM BAR
- Widget _buildBottomBar(Order order, ClientTournee client) {
-  return Container(
-    padding: EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.grey.shade200,
-          blurRadius: 4,
-          offset: Offset(0, -2),
-        ),
-      ],
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ✅ Première ligne de boutons
-        Row(
-          children: [
-            // Bouton Nouvelle commande
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _createNewOrder(client),
-                icon: Icon(Icons.add_shopping_cart),
-                label: Text('Nouvelle commande'),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-            
-            SizedBox(width: 12),
-            
-            // ✅ Bouton Mes commandes
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _goToOrdersList(),
-                icon: Icon(Icons.receipt_long),
-                label: Text('Mes commandes'),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        
-        SizedBox(height: 12),
-        
-        // ✅ Deuxième ligne - Bouton principal
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _returnToClients(),
-            icon: Icon(Icons.people),
-            label: Text('Retour aux clients'),
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-  
+
   /// 📄 TÉLÉCHARGER PDF
   void _downloadPdf(Order order) async {
     try {
@@ -587,7 +620,7 @@ class OrderConfirmationView extends StatelessWidget {
       );
     }
   }
-  
+
   /// 📤 PARTAGER COMMANDE
   void _shareOrder(Order order) {
     Get.bottomSheet(
@@ -649,7 +682,7 @@ class OrderConfirmationView extends StatelessWidget {
       ),
     );
   }
-  
+
   /// 📧 ENVOYER PAR EMAIL
   void _sendByEmail(Order order) {
     // À implémenter avec un package comme url_launcher
@@ -660,7 +693,7 @@ class OrderConfirmationView extends StatelessWidget {
       colorText: Colors.white,
     );
   }
-  
+
   /// 📱 ENVOYER PAR SMS
   void _sendBySMS(Order order) {
     // À implémenter avec un package comme url_launcher
@@ -671,7 +704,7 @@ class OrderConfirmationView extends StatelessWidget {
       colorText: Colors.white,
     );
   }
-  
+
   /// 📋 COPIER DANS LE PRESSE-PAPIERS
   void _copyToClipboard(Order order) {
     final summary = '''
@@ -692,7 +725,7 @@ Statut: ${order.statusDisplay}
       icon: Icon(Icons.copy, color: Colors.white),
     );
   }
-  
+
   /// 🛒 CRÉER NOUVELLE COMMANDE
   void _createNewOrder(ClientTournee client) {
     // Nettoyer la session courante
@@ -706,38 +739,25 @@ Statut: ${order.statusDisplay}
       arguments: {'client': client},
     );
   }
-  
+
   /// 👥 RETOURNER AUX CLIENTS
-void _returnToClients() {
-  final orderController = Get.find<OrderController>();
-  orderController.clearOrder();
-  
-  final tourneeController = Get.find<TourneeController>();
-  
-  // ✅ FORCER LE REFRESH DES DONNÉES
-  tourneeController.refresh().then((_) {
-    final tournee = tourneeController.tourneeToday.value;
-    final vendeur = tourneeController.vendeur.value;
+  void _returnToClients() {
+    final orderController = Get.find<OrderController>();
+    orderController.clearOrder();
     
-    if (tournee != null && vendeur != null) {
-      Get.offNamedUntil('/clients', (route) => route.settings.name == '/tournee',
-        arguments: {'tournee': tournee, 'vendeur': vendeur});
-    } else {
-      Get.offAllNamed('/tournee');
-    }
-  });
-}
-
-  void _goToOrdersList() {
-  // Nettoyer la session
-  final orderController = Get.find<OrderController>();
-  orderController.clearOrder();
-  
-  // Aller à la liste des commandes
-  Get.offNamedUntil(
-    '/orders',
-    (route) => route.settings.name == '/tournee',
-  );
-}
-
+    final tourneeController = Get.find<TourneeController>();
+    
+    // ✅ FORCER LE REFRESH DES DONNÉES
+    tourneeController.refresh().then((_) {
+      final tournee = tourneeController.tourneeToday.value;
+      final vendeur = tourneeController.vendeur.value;
+      
+      if (tournee != null && vendeur != null) {
+        Get.offNamedUntil('/clients', (route) => route.settings.name == '/tournee',
+          arguments: {'tournee': tournee, 'vendeur': vendeur});
+      } else {
+        Get.offAllNamed('/tournee');
+      }
+    });
+  }
 }

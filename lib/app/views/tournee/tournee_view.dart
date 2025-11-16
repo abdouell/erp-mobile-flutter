@@ -124,7 +124,7 @@ class TourneeView extends GetView<TourneeController> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => Get.toNamed('/orders'),
+                onPressed: () => Get.toNamed('/sales-history'),
                 icon: Icon(Icons.list_alt),
                 label: Text('Voir mes commandes'),
                 style: OutlinedButton.styleFrom(

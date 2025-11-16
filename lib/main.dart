@@ -1,10 +1,14 @@
 import 'package:erp_mobile/app/controllers/order_details_controller.dart';
 import 'package:erp_mobile/app/controllers/order_list_controller.dart';
 import 'package:erp_mobile/app/services/customer_service.dart';
+import 'package:erp_mobile/app/services/sales_service.dart';
+
 import 'package:erp_mobile/app/views/client/clients_view.dart';
 import 'package:erp_mobile/app/views/client/client_detail_view.dart';
 import 'package:erp_mobile/app/views/order/order_details_view.dart';
 import 'package:erp_mobile/app/views/order/order_list_view.dart';
+import 'package:erp_mobile/app/views/order/sales_history_view.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -17,6 +21,7 @@ import 'app/services/tournee_service.dart';
 import 'app/services/product_service.dart';
 import 'app/services/order_service.dart';
 import 'app/services/location_service.dart';
+
 import 'app/controllers/auth_controller.dart';
 import 'app/controllers/tournee_controller.dart';
 import 'app/controllers/order_controller.dart';
@@ -25,15 +30,16 @@ void main() async {
   // Initialisation GetStorage
   await GetStorage.init();
   
-  // ✅ SERVICES - Injection globale complète
+  // SERVICES - Injection globale complète
   Get.put(ApiService());
+  Get.put(SalesService());
   Get.put(TourneeService());
   Get.put(ProductService());
   Get.put(OrderService());
   Get.put(CustomerService());
   Get.put(LocationService());
   
-  // ✅ CONTROLLERS - Injection globale des controllers persistants uniquement
+  // CONTROLLERS - Injection globale des controllers persistants uniquement
   Get.put(AuthController());
   Get.put(TourneeController());
   Get.put(OrderController());
@@ -63,13 +69,13 @@ Widget build(BuildContext context) {
         primarySwatch: Colors.blue,
         useMaterial3: true,
         
-        // ✅ Thème amélioré pour les commandes
+        // Thème amélioré pour les commandes
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.light,
         ),
         
-        // ✅ CORRECTION: CardTheme → CardThemeData
+        // CORRECTION: CardTheme → CardThemeData
         cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -77,7 +83,7 @@ Widget build(BuildContext context) {
           ),
         ),
         
-        // ✅ Styles pour les boutons
+        // Styles pour les boutons
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             shape: RoundedRectangleBorder(
@@ -97,7 +103,7 @@ Widget build(BuildContext context) {
         ),
       ),
       
-      // ✅ Routes complètes avec système de commandes
+      // Routes complètes avec système de commandes
       initialRoute: '/',
       getPages: [
         // Routes existantes
@@ -105,7 +111,7 @@ Widget build(BuildContext context) {
         GetPage(name: '/tournee', page: () => TourneeView()),
         GetPage(name: '/clients', page: () => ClientsView()),
         
-        // ✅ Route détail client
+        // Route détail client
         GetPage(
           name: '/client-details',
           page: () => ClientDetailView(),
@@ -113,7 +119,7 @@ Widget build(BuildContext context) {
           transitionDuration: Duration(milliseconds: 300),
         ),
         
-        // ✅ Nouvelles routes commandes
+        // Nouvelles routes commandes
         GetPage(
           name: '/order-create',
           page: () => OrderCreateView(),
@@ -127,7 +133,7 @@ Widget build(BuildContext context) {
           transitionDuration: Duration(milliseconds: 500),
         ),
         
-        // ✅ ROUTE LISTE COMMANDES avec binding
+        // ROUTE LISTE COMMANDES avec binding
         GetPage(
           name: '/orders',
           page: () => OrdersListView(),
@@ -138,7 +144,7 @@ Widget build(BuildContext context) {
           transitionDuration: Duration(milliseconds: 300),
         ),
         
-        // ✅ ROUTE DÉTAILS COMMANDES avec paramètre et binding
+        // ROUTE DÉTAILS COMMANDES avec paramètre et binding
         GetPage(
           name: '/order-details/:id',
           page: () => OrderDetailsView(),
@@ -148,13 +154,22 @@ Widget build(BuildContext context) {
           transition: Transition.rightToLeft,
           transitionDuration: Duration(milliseconds: 300),
         ),
+
+        // ROUTE HISTORIQUE VENTES UNIFIÉ (ORDER + BL)
+        GetPage(
+          name: '/sales-history',
+          page: () => const SalesHistoryView(),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
       ],
       
-      // ✅ Configuration globale
+      // Configuration globale
       debugShowCheckedModeBanner: false,
       defaultTransition: Transition.cupertino,
       transitionDuration: Duration(milliseconds: 300),
       
+      // Gestion d'erreurs globale
       // ✅ Gestion d'erreurs globale
       unknownRoute: GetPage(
         name: '/not-found',

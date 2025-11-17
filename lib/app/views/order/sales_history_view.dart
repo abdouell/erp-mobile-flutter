@@ -1,5 +1,8 @@
+import 'dart:html' as html;
+
 import 'package:erp_mobile/app/controllers/order_controller.dart';
 import 'package:erp_mobile/app/models/sales_document_history.dart';
+import 'package:erp_mobile/app/services/sales_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -106,8 +109,21 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
                         fontSize: 16,
                       ),
                     ),
-                    if (doc.canEdit)
-                      const Icon(Icons.edit, size: 16, color: Colors.blue),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (doc.canEdit)
+                          const Icon(Icons.edit, size: 16, color: Colors.blue),
+                        if (doc.canDownloadPdf) ...[
+                          if (doc.canEdit) const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => _downloadPdf(doc),
+                            child: const Icon(Icons.picture_as_pdf, size: 18, color: Colors.red),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
                 onTap: () => _onDocumentTap(doc),
@@ -129,6 +145,56 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
         'Détail BL',
         'Affichage détaillé du BL à implémenter',
         backgroundColor: Colors.blueGrey,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  Future<void> _downloadPdf(SalesDocumentHistory doc) async {
+    try {
+      Get.dialog(
+        const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Génération du PDF...'),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      final salesService = Get.find<SalesService>();
+      final bytes = await salesService.downloadDocumentPdf(
+        type: doc.documentType,
+        id: doc.id,
+      );
+
+      // Flutter Web: déclencher un téléchargement réel dans le navigateur
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'document_${doc.documentType.toLowerCase()}_${doc.id}.pdf')
+        ..click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(url);
+
+      Get.back();
+
+      Get.snackbar(
+        'PDF généré',
+        'Le PDF du document ${doc.documentType} #${doc.documentNumber ?? doc.id} a été téléchargé',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.back();
+
+      Get.snackbar(
+        'Erreur',
+        'Impossible de générer le PDF: $e',
+        backgroundColor: Colors.red,
         colorText: Colors.white,
       );
     }

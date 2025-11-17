@@ -1,8 +1,11 @@
+import 'dart:html' as html;
+
 import 'package:erp_mobile/app/controllers/order_controller.dart';
 import 'package:erp_mobile/app/controllers/tournee_controller.dart';
 import 'package:erp_mobile/app/models/client_tournee.dart';
 import 'package:erp_mobile/app/models/order.dart';
 import 'package:erp_mobile/app/models/sale_response.dart';
+import 'package:erp_mobile/app/services/sales_service.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,7 +22,7 @@ class OrderConfirmationView extends StatelessWidget {
     return Scaffold(
       appBar: _buildAppBar(),
       body: _buildBody(order, client, sale),
-      bottomNavigationBar: _buildBottomBar(order, client),
+      bottomNavigationBar: _buildBottomBar(order, client, sale),
     );
   }
   
@@ -49,7 +52,7 @@ class OrderConfirmationView extends StatelessWidget {
           _buildOrderSummary(order),
           
           // Actions rapides
-          _buildQuickActions(order),
+          _buildQuickActions(order, sale),
         ],
       ),
     );
@@ -250,7 +253,7 @@ class OrderConfirmationView extends StatelessWidget {
   }
   
   /// 📱 BOTTOM BAR
-  Widget _buildBottomBar(Order order, ClientTournee client) {
+  Widget _buildBottomBar(Order order, ClientTournee client, SaleResponse? sale) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -286,10 +289,10 @@ class OrderConfirmationView extends StatelessWidget {
               
               SizedBox(width: 12),
               
-              // ✅ Bouton Mes commandes
+              // ✅ Bouton Mes commandes (route selon type de document)
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _goToOrdersList(),
+                  onPressed: () => _goToOrdersList(sale),
                   icon: Icon(Icons.receipt_long),
                   label: Text('Mes commandes'),
                   style: OutlinedButton.styleFrom(
@@ -325,16 +328,24 @@ class OrderConfirmationView extends StatelessWidget {
     );
   }
 
-  void _goToOrdersList() {
+  void _goToOrdersList(SaleResponse? sale) {
     // Nettoyer la session
     final orderController = Get.find<OrderController>();
     orderController.clearOrder();
     
-    // Aller à la liste des commandes
-    Get.offNamedUntil(
-      '/orders',
-      (route) => route.settings.name == '/tournee',
-    );
+    // Si le document est un BL ou autre type non ORDER → historique unifié
+    if (sale != null && sale.documentType != 'ORDER') {
+      Get.offNamedUntil(
+        '/sales-history',
+        (route) => route.settings.name == '/tournee',
+      );
+    } else {
+      // Sinon (commande classique) → liste des commandes
+      Get.offNamedUntil(
+        '/orders',
+        (route) => route.settings.name == '/tournee',
+      );
+    }
   }
 
   String _formatSaleDate(DateTime dateTime) {
@@ -518,7 +529,7 @@ class OrderConfirmationView extends StatelessWidget {
   }
 
   /// ⚡ ACTIONS RAPIDES
-  Widget _buildQuickActions(Order order) {
+  Widget _buildQuickActions(Order order, SaleResponse? sale) {
     return Container(
       margin: EdgeInsets.all(16),
       child: Card(
@@ -551,9 +562,9 @@ class OrderConfirmationView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _downloadPdf(order),
+                      onPressed: () => _downloadPdf(order, sale),
                       icon: Icon(Icons.picture_as_pdf),
-                      label: Text('Télécharger PDF'),
+                      label: Text('Télécharger PDF1'),
                       style: OutlinedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -579,9 +590,10 @@ class OrderConfirmationView extends StatelessWidget {
     );
   }
 
-  /// 📄 TÉLÉCHARGER PDF
-  void _downloadPdf(Order order) async {
+  /// 📄 TÉLÉCHARGER PDF (ORDER ou BL via SalesController)
+  void _downloadPdf(Order order, SaleResponse? sale) async {
     try {
+      print('▶️ _downloadPdf called - orderId: ${order.id}, sale: ${sale != null ? '${sale.documentType}#${sale.documentId}' : 'null'}');
       // Afficher loading
       Get.dialog(
         AlertDialog(
@@ -596,14 +608,42 @@ class OrderConfirmationView extends StatelessWidget {
         barrierDismissible: false,
       );
       
-      // Simuler téléchargement (à implémenter avec votre OrderService)
-      await Future.delayed(Duration(seconds: 2));
+      // Déterminer type et id de document
+      final String type;
+      final int id;
+
+      if (sale != null) {
+        type = sale.documentType;
+        id = sale.documentId;
+      } else {
+        type = 'ORDER';
+        id = order.id ?? 0;
+      }
+
+      print('📄 Preparing download - type=$type, id=$id');
+
+      if (id == 0) {
+        throw Exception('Identifiant de document invalide');
+      }
+
+      // Appel au service unifié SalesController
+      final salesService = Get.find<SalesService>();
+      final bytes = await salesService.downloadDocumentPdf(type: type, id: id);
+
+      // Flutter Web: déclencher un vrai téléchargement dans le navigateur
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'document_${type.toLowerCase()}_$id.pdf')
+        ..click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(url);
       
       Get.back(); // Fermer loading
       
       Get.snackbar(
         'PDF généré',
-        'Le PDF de la commande #${order.id} a été téléchargé',
+        'Le PDF du document $type #$id a été téléchargé',
         backgroundColor: Colors.green,
         colorText: Colors.white,
         icon: Icon(Icons.download_done, color: Colors.white),

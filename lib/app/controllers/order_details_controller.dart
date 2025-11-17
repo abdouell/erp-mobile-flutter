@@ -7,11 +7,13 @@ import '../models/order_item.dart';
 import '../models/client_tournee.dart';
 import '../services/order_service.dart';
 import '../services/customer_service.dart';
+import '../services/sales_service.dart';
 
 class OrderDetailsController extends GetxController {
   // Services
   final OrderService _orderService = Get.find<OrderService>();
   final CustomerService _customerService = Get.find<CustomerService>();
+  final SalesService _salesService = Get.find<SalesService>();
   
   // États réactifs
   final isLoading = true.obs; // ✅ Commence en loading
@@ -232,8 +234,11 @@ class OrderDetailsController extends GetxController {
         barrierDismissible: false,
       );
       
-      // Appel au service (si implémenté)
-      await _orderService.downloadOrderPdf(currentOrder!.id!);
+      // Appel au service unifié SalesController (type ORDER)
+      await _salesService.downloadDocumentPdf(
+        type: 'ORDER',
+        id: currentOrder!.id!,
+      );
       
       Get.back(); // Fermer loading
       

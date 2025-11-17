@@ -60,4 +60,27 @@ class SalesService extends GetxService {
       throw Exception(serverMessage);
     }
   }
+
+  /// Télécharger le PDF d'un document de vente (ORDER, BL, ...)
+  Future<List<int>> downloadDocumentPdf({
+    required String type,
+    required int id,
+  }) async {
+    try {
+      final response = await _apiService.dio.get(
+        '/api/sales/documents/pdf',
+        queryParameters: {
+          'type': type,
+          'id': id,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception('Erreur lors du téléchargement du PDF');
+    } catch (e) {
+      throw Exception('Erreur inattendue: $e');
+    }
+  }
 }

@@ -6,6 +6,7 @@ import 'package:erp_mobile/app/services/tournee_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/order_controller.dart';
+import '../../controllers/auth_controller.dart';
 import '../../models/product.dart';
 import '../../models/client_tournee.dart';
 
@@ -23,7 +24,8 @@ class OrderCreateView extends GetView<OrderController> {
     // Récupérer le client avec protection null
     final Map<String, dynamic> args = Get.arguments ?? {};
     final ClientTournee? client = args['client'];
-    
+    final String initialSaleType = (args['saleType'] ?? 'ORDER') as String;
+
     // Vérification de sécurité
     if (client == null) {
       return Scaffold(
@@ -67,12 +69,14 @@ class OrderCreateView extends GetView<OrderController> {
       }
       
       try {
+        // Définir le scénario de vente choisi (ORDER ou BL)
+        controller.setSaleType(initialSaleType);
         controller.initializeOrder(client);
       } catch (e) {
         print('❌ Erreur initialisation commande: $e');
         Get.snackbar(
           'Erreur',
-          'Impossible d\'initialiser la commande: $e',
+          'Impossible d'"'"'initialiser la commande: $e',
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
@@ -1176,36 +1180,124 @@ Widget _buildStockBadge(Product product) {
                     
                     SizedBox(height: 16),
                     
-                    // Bouton valider commande
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: controller.isValidatingOrder.value
-                            ? null
-                            : () {
-                                controller.validateOrder();
-                              },
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: controller.isValidatingOrder.value
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text('Validation...'),
-                                ],
-                              )
-                            : Text('Valider la commande'),
-                      ),
+                    // Bouton de validation selon permissions et scénario choisi (ORDER ou BL)
+                    Builder(
+                      builder: (context) {
+                        final authController = Get.find<AuthController>();
+                        final user = authController.user.value;
+
+                        final canCreateOrder = user?.hasPermission('CREER_COMMANDE_MOBILE') ?? false;
+                        final canCreateBL = user?.hasPermission('CREER_BL_MOBILE') ?? false;
+                        final String currentSaleType = controller.currentSaleType.value;
+
+                        // Aucun droit : bouton désactivé avec message générique
+                        if (!canCreateOrder && !canCreateBL) {
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: null,
+                              child: Text('Aucun droit pour créer une vente'),
+                            ),
+                          );
+                        }
+
+                        // Scénario COMMANDE (ORDER)
+                        if (currentSaleType == 'ORDER') {
+                          if (!canCreateOrder) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: null,
+                                child: Text('Aucun droit pour valider cette commande'),
+                              ),
+                            );
+                          }
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: controller.isValidatingOrder.value
+                                  ? null
+                                  : () {
+                                      controller.validateOrder(saleType: 'ORDER');
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: controller.isValidatingOrder.value
+                                  ? Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Validation...'),
+                                      ],
+                                    )
+                                  : Text('Valider commande'),
+                            ),
+                          );
+                        }
+
+                        // Scénario BL
+                        if (currentSaleType == 'BL') {
+                          if (!canCreateBL) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: null,
+                                child: Text('Aucun droit pour créer un BL'),
+                              ),
+                            );
+                          }
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: controller.isValidatingOrder.value
+                                  ? null
+                                  : () {
+                                      controller.validateOrder(saleType: 'BL');
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: controller.isValidatingOrder.value
+                                  ? Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Validation...'),
+                                      ],
+                                    )
+                                  : Text('Créer BL'),
+                            ),
+                          );
+                        }
+
+                        // Fallback sécurité
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: null,
+                            child: Text('Type de vente inconnu'),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

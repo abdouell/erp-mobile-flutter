@@ -1,4 +1,6 @@
 import 'package:erp_mobile/app/controllers/tournee_controller.dart';
+import 'package:erp_mobile/app/controllers/auth_controller.dart';
+
 import 'package:erp_mobile/app/models/client_tournee.dart';
 import 'package:erp_mobile/app/models/statut_visite.dart';
 import 'package:erp_mobile/app/models/visite.dart';
@@ -512,15 +514,22 @@ class ClientDetailView extends GetView<TourneeController> {
       );
     }
 
-    // CAS 2: Visite en cours → Boutons "Créer commande" + "Terminer sans vente"
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+    // CAS 2: Visite en cours → Boutons selon permissions utilisateur
+    final authController = Get.find<AuthController>();
+    final user = authController.user.value;
+
+    final canCreateOrder = user?.hasPermission('CREER_COMMANDE_MOBILE') ?? false;
+    final canCreateBL = user?.hasPermission('CREER_BL_MOBILE') ?? false;
+
+    List<Widget> buttons = [];
+
+    if (canCreateOrder) {
+      buttons.add(
         SizedBox(
           width: double.infinity,
           height: 50,
           child: ElevatedButton.icon(
-            onPressed: () => _handleCreateOrder(client),
+            onPressed: () => _handleCreateOrder(client, initialSaleType: 'ORDER'),
             icon: Icon(Icons.shopping_cart),
             label: Text('Créer une commande'),
             style: ElevatedButton.styleFrom(
@@ -529,7 +538,38 @@ class ClientDetailView extends GetView<TourneeController> {
             ),
           ),
         ),
-        SizedBox(height: 12),
+      );
+    }
+
+    if (canCreateBL) {
+      if (buttons.isNotEmpty) {
+        buttons.add(SizedBox(height: 8));
+      }
+      buttons.add(
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: () => _handleCreateOrder(client, initialSaleType: 'BL'),
+            icon: Icon(Icons.document_scanner),
+            label: Text('Créer un BL'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Si aucune permission de création, masquer les boutons de création et laisser seulement "Terminer sans vente"
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (buttons.isNotEmpty) ...[
+          ...buttons,
+          SizedBox(height: 12),
+        ],
         SizedBox(
           width: double.infinity,
           height: 50,
@@ -588,9 +628,12 @@ class ClientDetailView extends GetView<TourneeController> {
     }
   }
 
-  void _handleCreateOrder(ClientTournee client) async {
-    // Naviguer vers la création de commande
-    await Get.toNamed('/order-create', arguments: {'client': client});
+  void _handleCreateOrder(ClientTournee client, {String initialSaleType = 'ORDER'}) async {
+    // Naviguer vers la création de commande avec le scénario choisi (ORDER ou BL)
+    await Get.toNamed('/order-create', arguments: {
+      'client': client,
+      'saleType': initialSaleType,
+    });
     
     // Après retour, rafraîchir
     await controller.refresh();

@@ -1,5 +1,3 @@
-import 'dart:html' as html;
-
 import 'package:erp_mobile/app/controllers/order_controller.dart';
 import 'package:erp_mobile/app/models/sales_document_history.dart';
 import 'package:erp_mobile/app/services/sales_service.dart';
@@ -166,19 +164,10 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
       );
 
       final salesService = Get.find<SalesService>();
-      final bytes = await salesService.downloadDocumentPdf(
+      await salesService.downloadDocumentPdf(
         type: doc.documentType,
         id: doc.id,
       );
-
-      // Flutter Web: déclencher un téléchargement réel dans le navigateur
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'document_${doc.documentType.toLowerCase()}_${doc.id}.pdf')
-        ..click();
-      anchor.remove();
-      html.Url.revokeObjectUrl(url);
 
       Get.back();
 

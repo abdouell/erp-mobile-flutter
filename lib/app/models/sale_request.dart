@@ -8,11 +8,13 @@ class SaleRequest {
   final int? clientTourneeId;
   final double? latitude;
   final double? longitude;
+  final String saleType; // ORDER ou BL
 
   SaleRequest({
     required this.userId,
     required this.customerId,
     required this.lines,
+    required this.saleType,
     this.comment,
     this.clientTourneeId,
     this.latitude,
@@ -28,6 +30,7 @@ class SaleRequest {
       'clientTourneeId': clientTourneeId,
       'latitude': latitude,
       'longitude': longitude,
+      'saleType': saleType,
     };
   }
 }

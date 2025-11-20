@@ -49,6 +49,9 @@ class OrderController extends GetxController {
   final cartTotal = 0.0.obs;
   final cartItemCount = 0.obs;
 
+  // Scénario de vente courant (ORDER ou BL), choisi sur l'écran client
+  final currentSaleType = 'ORDER'.obs;
+
   // États réactifs - HISTORIQUE UNIFIÉ (ORDER + BL)
   final salesHistory = <SalesDocumentHistory>[].obs;
   
@@ -64,6 +67,11 @@ class OrderController extends GetxController {
     
     // Recalculer le total à chaque changement du panier
     ever(cartItems, (_) => _updateCartTotals());
+  }
+
+  /// Définir le scénario de vente (ORDER ou BL) choisi en amont
+  void setSaleType(String saleType) {
+    currentSaleType.value = saleType;
   }
   
   /// 🚀 INITIALISATION - Appelée depuis la vue
@@ -121,7 +129,7 @@ Future<void> _loadProducts() async {
     
     final customerId = selectedClient.value!.customerId;
 
-    // ✅ RÉCUPÉRER LE VENDEUR pour savoir si filtrage par emplacement nécessaire
+    // ✅ RÉCUPÉRER LE VENDEUR (pour l'emplacement) ET LE SCÉNARIO COURANT
     final tourneeController = Get.find<TourneeController>();
     final vendeur = tourneeController.vendeur.value;
     
@@ -129,14 +137,16 @@ Future<void> _loadProducts() async {
       throw Exception('Informations vendeur non disponibles');
     }
     
-    print('👤 Vendeur récupéré: ${vendeur.nomComplet} - Type: ${vendeur.typeVendeur}');
+    print('👤 Vendeur récupéré: ${vendeur.nomComplet} - Type: ${vendeur.typeVendeur} - Emplacement: ${vendeur.emplacementCode}');
+    final String saleType = currentSaleType.value;
+    print('🧾 Scénario courant (saleType): $saleType');
     
     List<Product> products;
     
-    // ✅ LOGIQUE CONDITIONNELLE SELON TYPE VENDEUR
-    if (vendeur.isConventionnel && vendeur.hasEmplacement) {
-      // Vendeur CONVENTIONNEL → Produits en stock avec tarification client
-      print('🚚 Vendeur CONVENTIONNEL détecté - Chargement stock emplacement ${vendeur.emplacementCode}');
+    // ✅ LOGIQUE CONDITIONNELLE SELON SCÉNARIO DE VENTE
+    if (saleType == 'BL' && vendeur.hasEmplacement) {
+      // Scénario BL → Produits en stock sur l'emplacement du vendeur + tarification client
+      print('🚚 Scénario BL - Chargement stock emplacement ${vendeur.emplacementCode}');
       
       // Récupérer produits avec stock
       final stockProducts = await _productService.getProductsByEmplacement(vendeur.emplacementCode!);
@@ -198,11 +208,11 @@ Future<void> _loadProducts() async {
         return stockProduct;
       }).toList();
       
-      print('✅ ${products.length} produits en stock avec tarification client');
+      print('✅ ${products.length} produits en stock avec tarification client (scénario BL)');
       
     } else {
-      // Vendeur PREVENTE ou LIVREUR → Tous les produits avec tarification client
-      print('📋 Vendeur ${vendeur.typeVendeur} - Chargement de tous les produits avec tarification');
+      // Scénario COMMANDE (ORDER) ou BL sans emplacement → tous les produits client, sans filtrage par type vendeur
+      print('📋 Scénario $saleType - Chargement de tous les produits avec tarification client');
       products = await _productService.getProductsForCustomer(customerId);
       print('✅ ${products.length} produits chargés avec tarification client');
     }
@@ -397,7 +407,7 @@ void addToCart(Product product, {int quantity = 1}) {
   
   
 /// ✅ VALIDER COMMANDE - AVEC CHECKOUT AUTOMATIQUE
-Future<void> validateOrder() async {
+Future<void> validateOrder({String saleType = 'ORDER'}) async {
   try {
     print('📄 === VALIDATION COMMANDE ===');
     
@@ -459,6 +469,7 @@ Future<void> validateOrder() async {
                 designation: item.productName,
               ))
           .toList(),
+      saleType: saleType,
       comment: finalOrder.comment,
       clientTourneeId: selectedClient.value!.id,
       latitude: latitude,

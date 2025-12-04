@@ -8,7 +8,13 @@ class SaleRequest {
   final int? clientTourneeId;
   final double? latitude;
   final double? longitude;
-  final String saleType; // ORDER ou BL
+  final String saleType; // ORDER, BL ou RETURN
+
+  // Champs spécifiques aux retours
+  final int? originalDocumentId;
+  final String? originalDocumentType; // BL ou INVOICE
+  final String? returnReason;
+  final String? returnCondition; // CONFORME ou NON_CONFORME
 
   SaleRequest({
     required this.userId,
@@ -19,6 +25,10 @@ class SaleRequest {
     this.clientTourneeId,
     this.latitude,
     this.longitude,
+    this.originalDocumentId,
+    this.originalDocumentType,
+    this.returnReason,
+    this.returnCondition,
   });
 
   Map<String, dynamic> toJson() {
@@ -31,6 +41,10 @@ class SaleRequest {
       'latitude': latitude,
       'longitude': longitude,
       'saleType': saleType,
+      if (originalDocumentId != null) 'originalDocumentId': originalDocumentId,
+      if (originalDocumentType != null) 'originalDocumentType': originalDocumentType,
+      if (returnReason != null) 'returnReason': returnReason,
+      if (returnCondition != null) 'returnCondition': returnCondition,
     };
   }
 }

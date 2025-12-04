@@ -144,7 +144,10 @@ Future<void> _loadProducts() async {
     List<Product> products;
     
     // ✅ LOGIQUE CONDITIONNELLE SELON SCÉNARIO DE VENTE
-    if (saleType == 'BL' && vendeur.hasEmplacement) {
+    // Retours : même logique que ORDER (tous les produits, pas de contrôle stock)
+    final isReturn = saleType == 'RETURN_CONFORME' || saleType == 'RETURN_NON_CONFORME';
+    
+    if (saleType == 'BL' && vendeur.hasEmplacement && !isReturn) {
       // Scénario BL → Produits en stock sur l'emplacement du vendeur + tarification client
       print('🚚 Scénario BL - Chargement stock emplacement ${vendeur.emplacementCode}');
       
@@ -459,6 +462,14 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
       throw Exception('Aucun client sélectionné');
     }
 
+    // Déterminer si c'est un retour et extraire la condition
+    final isReturn = saleType == 'RETURN_CONFORME' || saleType == 'RETURN_NON_CONFORME';
+    final returnCondition = saleType == 'RETURN_CONFORME' ? 'CONFORME' : 
+                            saleType == 'RETURN_NON_CONFORME' ? 'NON_CONFORME' : null;
+    
+    // Pour les retours, le saleType envoyé au backend est "RETURN"
+    final actualSaleType = isReturn ? 'RETURN' : saleType;
+
     final saleRequest = SaleRequest(
       userId: user.id,
       customerId: selectedClient.value!.customerId,
@@ -469,11 +480,13 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
                 designation: item.productName,
               ))
           .toList(),
-      saleType: saleType,
+      saleType: actualSaleType,
       comment: finalOrder.comment,
       clientTourneeId: selectedClient.value!.id,
       latitude: latitude,
       longitude: longitude,
+      // Condition de retour globale (pour les retours)
+      returnCondition: returnCondition,
     );
 
     print('📤 Envoi de la vente via /api/sales: ${saleRequest.toJson()}');
@@ -504,9 +517,16 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     clearCart();
     
     // 4. MESSAGE DE SUCCÈS
-    final successTitle = saleResponse.documentType == 'ORDER'
-        ? 'Commande validée ! 🎉'
-        : 'BL créé ! 🎉';
+    String successTitle;
+    if (saleResponse.documentType == 'ORDER') {
+      successTitle = 'Commande validée ! 🎉';
+    } else if (saleResponse.documentType == 'CREDIT_NOTE') {
+      successTitle = 'Avoir créé ! 🎉';
+    } else if (saleResponse.documentType == 'RETURN_REQUEST') {
+      successTitle = 'Retour enregistré ! 🎉';
+    } else {
+      successTitle = 'BL créé ! 🎉';
+    }
 
     final successMessage =
         '${saleResponse.documentType} #${saleResponse.documentNumber} (${saleResponse.status})';

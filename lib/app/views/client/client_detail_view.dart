@@ -520,6 +520,7 @@ class ClientDetailView extends GetView<TourneeController> {
 
     final canCreateOrder = user?.hasPermission('CREER_COMMANDE_MOBILE') ?? false;
     final canCreateBL = user?.hasPermission('CREER_BL_MOBILE') ?? false;
+    final canCreateReturn = user?.hasPermission('CREER_RETOUR_MOBILE') ?? false;
 
     List<Widget> buttons = [];
 
@@ -555,6 +556,46 @@ class ClientDetailView extends GetView<TourneeController> {
             label: Text('Créer un BL'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Boutons de retour
+    if (canCreateReturn) {
+      if (buttons.isNotEmpty) {
+        buttons.add(SizedBox(height: 8));
+      }
+      // Retour conforme
+      buttons.add(
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: () => _handleCreateOrder(client, initialSaleType: 'RETURN_CONFORME'),
+            icon: Icon(Icons.assignment_return),
+            label: Text('Créer un retour conforme'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+      );
+      buttons.add(SizedBox(height: 8));
+      // Retour non conforme
+      buttons.add(
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: () => _handleCreateOrder(client, initialSaleType: 'RETURN_NON_CONFORME'),
+            icon: Icon(Icons.assignment_late),
+            label: Text('Créer un retour non conforme'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,
             ),
           ),

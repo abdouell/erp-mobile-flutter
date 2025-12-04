@@ -356,20 +356,35 @@ Future<void> _performClotureVisite(ClientTournee client, String motif, String? n
   /// 📱 APP BAR avec info client et panier
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: Obx(() => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Nouvelle commande',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          if (controller.selectedClient.value != null)
+      title: Obx(() {
+        // Titre selon le type de vente
+        String title;
+        final saleType = controller.currentSaleType.value;
+        if (saleType == 'RETURN_CONFORME') {
+          title = 'Retour conforme';
+        } else if (saleType == 'RETURN_NON_CONFORME') {
+          title = 'Retour non conforme';
+        } else if (saleType == 'BL') {
+          title = 'Nouveau BL';
+        } else {
+          title = 'Nouvelle commande';
+        }
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              controller.selectedClient.value!.customerName,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+              title,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-        ],
-      )),
+            if (controller.selectedClient.value != null)
+              Text(
+                controller.selectedClient.value!.customerName,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+              ),
+          ],
+        );
+      }),
       backgroundColor: Theme.of(Get.context!).primaryColor,
       foregroundColor: Colors.white,
       elevation: 2,
@@ -1188,15 +1203,104 @@ Widget _buildStockBadge(Product product) {
 
                         final canCreateOrder = user?.hasPermission('CREER_COMMANDE_MOBILE') ?? false;
                         final canCreateBL = user?.hasPermission('CREER_BL_MOBILE') ?? false;
+                        final canCreateReturn = user?.hasPermission('CREER_RETOUR_MOBILE') ?? false;
                         final String currentSaleType = controller.currentSaleType.value;
 
                         // Aucun droit : bouton désactivé avec message générique
-                        if (!canCreateOrder && !canCreateBL) {
+                        if (!canCreateOrder && !canCreateBL && !canCreateReturn) {
                           return SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: null,
                               child: Text('Aucun droit pour créer une vente'),
+                            ),
+                          );
+                        }
+
+                        // Scénario RETOUR CONFORME
+                        if (currentSaleType == 'RETURN_CONFORME') {
+                          if (!canCreateReturn) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: null,
+                                child: Text('Aucun droit pour créer un retour'),
+                              ),
+                            );
+                          }
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: controller.isValidatingOrder.value
+                                  ? null
+                                  : () {
+                                      controller.validateOrder(saleType: 'RETURN_CONFORME');
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: controller.isValidatingOrder.value
+                                  ? Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Validation...'),
+                                      ],
+                                    )
+                                  : Text('Valider retour conforme'),
+                            ),
+                          );
+                        }
+
+                        // Scénario RETOUR NON CONFORME
+                        if (currentSaleType == 'RETURN_NON_CONFORME') {
+                          if (!canCreateReturn) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: null,
+                                child: Text('Aucun droit pour créer un retour'),
+                              ),
+                            );
+                          }
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: controller.isValidatingOrder.value
+                                  ? null
+                                  : () {
+                                      controller.validateOrder(saleType: 'RETURN_NON_CONFORME');
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: controller.isValidatingOrder.value
+                                  ? Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Validation...'),
+                                      ],
+                                    )
+                                  : Text('Valider retour non conforme'),
                             ),
                           );
                         }

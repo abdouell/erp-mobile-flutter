@@ -20,16 +20,36 @@ class OrderConfirmationView extends StatelessWidget {
     final SaleResponse? sale = args['sale'];
 
     return Scaffold(
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(sale),
       body: _buildBody(order, client, sale),
       bottomNavigationBar: _buildBottomBar(order, client, sale),
     );
   }
   
   /// 📱 APP BAR
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(SaleResponse? sale) {
+    // Titre selon le type de document
+    String title;
+    switch (sale?.documentType) {
+      case 'BL':
+        title = 'BL créé';
+        break;
+      case 'CREDIT_NOTE':
+        title = 'Avoir créé';
+        break;
+      case 'RETURN_REQUEST':
+        title = 'Retour enregistré';
+        break;
+      case 'INVOICE':
+        title = 'Facture créée';
+        break;
+      case 'ORDER':
+      default:
+        title = 'Commande validée';
+    }
+    
     return AppBar(
-      title: Text('Commande validée'),
+      title: Text(title),
       backgroundColor: Colors.green,
       foregroundColor: Colors.white,
       elevation: 2,
@@ -107,7 +127,7 @@ class OrderConfirmationView extends StatelessWidget {
           
           // Titre succès
           Text(
-            sale?.documentType == 'BL' ? 'BL créé !' : 'Commande validée !',
+            _getSuccessTitle(sale?.documentType),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -350,6 +370,23 @@ class OrderConfirmationView extends StatelessWidget {
 
   String _formatSaleDate(DateTime dateTime) {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+  }
+
+  /// 🎉 Titre de succès selon le type de document
+  String _getSuccessTitle(String? documentType) {
+    switch (documentType) {
+      case 'BL':
+        return 'BL créé !';
+      case 'CREDIT_NOTE':
+        return 'Avoir créé !';
+      case 'RETURN_REQUEST':
+        return 'Retour enregistré !';
+      case 'INVOICE':
+        return 'Facture créée !';
+      case 'ORDER':
+      default:
+        return 'Commande validée !';
+    }
   }
 
   /// 📄 LIGNE INFO

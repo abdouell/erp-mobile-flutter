@@ -65,10 +65,34 @@ class SalesDocumentHistory {
   }
 
   IconData get typeIcon {
-    return documentType == 'BL' ? Icons.local_shipping : Icons.shopping_cart;
+    switch (documentType) {
+      case 'BL':
+        return Icons.local_shipping;
+      case 'CREDIT_NOTE':
+        return Icons.receipt_long;
+      case 'RETURN_REQUEST':
+        return Icons.assignment_return;
+      case 'INVOICE':
+        return Icons.receipt;
+      case 'ORDER':
+      default:
+        return Icons.shopping_cart;
+    }
   }
 
   String get typeLabel {
-    return documentType == 'BL' ? 'Bon de livraison' : 'Commande';
+    switch (documentType) {
+      case 'BL':
+        return 'Bon de livraison';
+      case 'CREDIT_NOTE':
+        return 'Avoir';
+      case 'RETURN_REQUEST':
+        return 'Demande de retour';
+      case 'INVOICE':
+        return 'Facture';
+      case 'ORDER':
+      default:
+        return 'Commande';
+    }
   }
 }

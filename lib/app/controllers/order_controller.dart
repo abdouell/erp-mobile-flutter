@@ -420,7 +420,7 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     }
     
     // Dialogue de validation avec commentaire
-    final validationResult = await _showValidationDialogWithComment();
+    final validationResult = await _showValidationDialogWithComment(saleType: saleType);
     if (validationResult == null || !validationResult['confirmed']) {
       print('❌ Validation annulée par l\'utilisateur');
       return;
@@ -585,8 +585,33 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
 }
 
 /// 💬 DIALOGUE VALIDATION AVEC COMMENTAIRE
-Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
+Future<Map<String, dynamic>?> _showValidationDialogWithComment({String? saleType}) async {
   final TextEditingController commentController = TextEditingController();
+  
+  // Déterminer les libellés selon le type de vente
+  String dialogTitle;
+  String documentLabel;
+  String hintText;
+  String confirmMessage;
+  
+  final type = saleType ?? currentSaleType.value;
+  
+  if (type == 'RETURN_CONFORME' || type == 'RETURN_NON_CONFORME') {
+    dialogTitle = 'Valider le retour';
+    documentLabel = 'retour';
+    hintText = 'Ajouter un commentaire à ce retour...';
+    confirmMessage = 'Confirmer la validation de ce retour ?';
+  } else if (type == 'BL') {
+    dialogTitle = 'Valider le BL';
+    documentLabel = 'BL';
+    hintText = 'Ajouter un commentaire à ce BL...';
+    confirmMessage = 'Confirmer la validation de ce BL ?';
+  } else {
+    dialogTitle = 'Valider la commande';
+    documentLabel = 'commande';
+    hintText = 'Ajouter un commentaire à cette commande...';
+    confirmMessage = 'Confirmer la validation de cette commande ?';
+  }
   
   return await Get.dialog<Map<String, dynamic>>(
     AlertDialog(
@@ -594,7 +619,7 @@ Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
         children: [
           Icon(Icons.check_circle_outline, color: Colors.green),
           SizedBox(width: 8),
-          Text('Valider la commande'),
+          Text(dialogTitle),
         ],
       ),
       content: SingleChildScrollView(
@@ -602,7 +627,7 @@ Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ Récapitulatif de la commande
+            // ✅ Récapitulatif
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -645,7 +670,7 @@ Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
               maxLines: 3,
               maxLength: 500,
               decoration: InputDecoration(
-                hintText: 'Ajouter un commentaire à cette commande...',
+                hintText: hintText,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -663,7 +688,7 @@ Future<Map<String, dynamic>?> _showValidationDialogWithComment() async {
             
             // ✅ Message de confirmation
             Text(
-              'Confirmer la validation de cette commande ?',
+              confirmMessage,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,

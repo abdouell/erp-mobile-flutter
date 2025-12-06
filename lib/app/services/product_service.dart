@@ -72,17 +72,27 @@ class ProductService extends GetxService {
   }
 
   /// Récupérer les produits disponibles en stock pour un emplacement
+/// Avec pricing client si customerId fourni
 /// Utilisé pour les vendeurs conventionnels
-Future<List<Product>> getProductsByEmplacement(String emplacementCode) async {
+Future<List<Product>> getProductsByEmplacement(String emplacementCode, {int? customerId}) async {
   try {
+    print('=== RÉCUPÉRATION PRODUITS EMPLACEMENT ===');
+    print('Emplacement: $emplacementCode');
+    print('Customer ID: $customerId');
 
     final response = await _apiService.dio.get(
       '/api/product/emplacement/$emplacementCode/stock',
+      queryParameters: customerId != null ? {'customerId': customerId} : null,
     );
     
+    print('✅ Réponse API: ${response.data?.length ?? 0} produits');
 
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();
+    
+    // Compter combien ont des prix spéciaux
+    final withDiscount = products.where((p) => p.hasDiscount).length;
+    print('💰 Produits avec remise: $withDiscount');
     
     return products;
     

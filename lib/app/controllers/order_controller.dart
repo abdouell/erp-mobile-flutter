@@ -148,68 +148,14 @@ Future<void> _loadProducts() async {
     final isReturn = saleType == 'RETURN_CONFORME' || saleType == 'RETURN_NON_CONFORME';
     
     if (saleType == 'BL' && vendeur.hasEmplacement && !isReturn) {
-      // Scénario BL → Produits en stock sur l'emplacement du vendeur + tarification client
-      print('🚚 Scénario BL - Chargement stock emplacement ${vendeur.emplacementCode}');
+      // Scénario BL → Produits en stock sur l'emplacement du vendeur + tarification client EN UN SEUL APPEL
+      print('🚚 Scénario BL - Chargement stock emplacement ${vendeur.emplacementCode} avec pricing client');
       
-      // Récupérer produits avec stock
-      final stockProducts = await _productService.getProductsByEmplacement(vendeur.emplacementCode!);
-      
-      // Récupérer tarification client
-      final pricedProducts = await _productService.getProductsForCustomer(customerId);
-      
-      // Fusionner : garder seulement les produits en stock, avec leur prix client
-      products = stockProducts.map((stockProduct) {
-        // Chercher le même produit dans la liste avec tarification
-        final pricedProduct = pricedProducts.firstWhereOrNull(
-          (p) => p.productCode == stockProduct.productCode
-        );
-        
-        // Si trouvé avec tarification, utiliser celui-là mais garder le stock
-        if (pricedProduct != null) {
-          return Product(
-            id: pricedProduct.id,
-            productCode: pricedProduct.productCode,
-            description: pricedProduct.description,
-            rank: pricedProduct.rank,
-            companyCode: pricedProduct.companyCode,
-            productPageCode: pricedProduct.productPageCode,
-            productCategoryCode: pricedProduct.productCategoryCode,
-            productTypeCode: pricedProduct.productTypeCode,
-            supplierCode: pricedProduct.supplierCode,
-            salesPrice: pricedProduct.salesPrice,
-            // ✅ Prix client et remise
-            customerPrice: pricedProduct.customerPrice,
-            discountPercent: pricedProduct.discountPercent,
-            hasPriceList: pricedProduct.hasPriceList,
-            vatCode: pricedProduct.vatCode,
-            hold: pricedProduct.hold,
-            rangeCode: pricedProduct.rangeCode,
-            familyCode: pricedProduct.familyCode,
-            brand: pricedProduct.brand,
-            activityCode: pricedProduct.activityCode,
-            managementUnit: pricedProduct.managementUnit,
-            stockMin: pricedProduct.stockMin,
-            // ✅ Info stock du produit d'origine
-            quantiteEnStock: stockProduct.quantiteEnStock,
-            longDescription: pricedProduct.longDescription,
-            barcode: pricedProduct.barcode,
-            page: pricedProduct.page,
-            fournisseur: pricedProduct.fournisseur,
-            discount: pricedProduct.discount,
-            salesPacking: pricedProduct.salesPacking,
-            weight: pricedProduct.weight,
-            volume: pricedProduct.volume,
-            weightManaged: pricedProduct.weightManaged,
-            weightPrecision: pricedProduct.weightPrecision,
-            photo: pricedProduct.photo,
-            freeProduct: pricedProduct.freeProduct,
-            colisageCarton: pricedProduct.colisageCarton,
-          );
-        }
-        
-        // Sinon, utiliser le produit en stock tel quel
-        return stockProduct;
-      }).toList();
+      // ✅ UN SEUL APPEL : stock + pricing client avec vérification de période PriceList
+      products = await _productService.getProductsByEmplacement(
+        vendeur.emplacementCode!,
+        customerId: customerId,
+      );
       
       print('✅ ${products.length} produits en stock avec tarification client (scénario BL)');
       

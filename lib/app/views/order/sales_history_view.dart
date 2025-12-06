@@ -1,6 +1,10 @@
+import 'dart:html' as html;
+import 'dart:typed_data';
+
 import 'package:erp_mobile/app/controllers/order_controller.dart';
 import 'package:erp_mobile/app/models/sales_document_history.dart';
 import 'package:erp_mobile/app/services/sales_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -96,40 +100,47 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
                     ),
                   ],
                 ),
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${doc.totalAmountTTC.toStringAsFixed(2)} DH',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                trailing: SizedBox(
+                  width: 120,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${(doc.totalAmountTTC > 0 ? doc.totalAmountTTC : doc.totalAmount).toStringAsFixed(2)} DH',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'HT: ${doc.totalAmount.toStringAsFixed(2)} DH',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (doc.canEdit)
-                          const Icon(Icons.edit, size: 16, color: Colors.blue),
-                        if (doc.canDownloadPdf) ...[
-                          if (doc.canEdit) const SizedBox(width: 8),
-                          InkWell(
-                            onTap: () => _downloadPdf(doc),
-                            child: const Icon(Icons.picture_as_pdf, size: 18, color: Colors.red),
+                      if (doc.totalAmountTTC > 0)
+                        Text(
+                          'HT: ${doc.totalAmount.toStringAsFixed(2)} DH',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.grey,
                           ),
+                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (doc.canEdit)
+                            const Icon(Icons.edit, size: 14, color: Colors.blue),
+                          if (doc.canDownloadPdf) ...[
+                            if (doc.canEdit) const SizedBox(width: 4),
+                            GestureDetector(
+                              onTap: () {
+                                _downloadPdf(doc);
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.red),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
                 onTap: () => _onDocumentTap(doc),
               ),
@@ -171,10 +182,21 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
       );
 
       final salesService = Get.find<SalesService>();
-      await salesService.downloadDocumentPdf(
+      final bytes = await salesService.downloadDocumentPdf(
         type: doc.documentType,
         id: doc.id,
       );
+
+      // Déclencher le téléchargement
+      if (kIsWeb) {
+        final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'document_${doc.documentType.toLowerCase()}_${doc.id}.pdf')
+          ..click();
+        anchor.remove();
+        html.Url.revokeObjectUrl(url);
+      }
 
       Get.back();
 

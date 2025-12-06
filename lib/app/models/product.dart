@@ -16,8 +16,6 @@ class Product {
   final double? customerPrice;      // Prix client spécifique (null si = catalogue)
   final double? discountPercent;    // % de remise (null si pas de remise)
   final bool hasPriceList;          // Indique si le client a un tarif spécial
-
-  final String vatCode;
   final bool hold;
   final String rangeCode;
   final String familyCode;
@@ -57,7 +55,6 @@ class Product {
     this.customerPrice,
     this.discountPercent,
     this.hasPriceList = false,
-    required this.vatCode,
     required this.hold,
     required this.rangeCode,
     required this.familyCode,
@@ -96,7 +93,6 @@ class Product {
       customerPrice: json['customerPrice']?.toDouble(),
       discountPercent: json['discountPercent']?.toDouble(),
       hasPriceList: json['hasPriceList'] ?? false,
-      vatCode: json['vatCode'],
       hold: json['hold'] ?? false,
       rangeCode: json['rangeCode'],
       familyCode: json['familyCode'],
@@ -136,7 +132,6 @@ class Product {
       'customerPrice': customerPrice,
       'discountPercent': discountPercent,
       'hasPriceList': hasPriceList,
-      'vatCode': vatCode,
       'hold': hold,
       'rangeCode': rangeCode,
       'familyCode': familyCode,

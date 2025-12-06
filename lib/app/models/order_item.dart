@@ -7,7 +7,6 @@ class OrderItem {
   final int quantity;
   final double price;
   final String designation;
-  final String vat;
   final double? discount;
 
   OrderItem({
@@ -17,7 +16,6 @@ class OrderItem {
     required this.quantity,
     required this.price,
     required this.designation,
-    required this.vat,
     this.discount,
   });
 
@@ -47,15 +45,12 @@ class OrderItem {
     
     // ✅ ÉTAPE 4: Récupérer les autres infos depuis le produit
     String itemDesignation = '';
-    String itemVat = '';
     
     if (itemProduct != null) {
       itemDesignation = itemProduct.description;
-      itemVat = itemProduct.vatCode;
     } else {
       // Fallback sur les champs directs
       itemDesignation = json['designation'] ?? '';
-      itemVat = json['vat'] ?? '';
     }
     
     // ✅ ÉTAPE 5: Gestion de la remise
@@ -71,7 +66,6 @@ class OrderItem {
       quantity: itemQuantity,
       price: itemPrice,
       designation: itemDesignation,
-      vat: itemVat,
       discount: itemDiscount,
     );
   }
@@ -83,7 +77,6 @@ class OrderItem {
       'quantity': quantity,
       'price': price,
       'designation': designation,
-      'vat': vat,
       'discount': discount,
     };
   }
@@ -96,7 +89,6 @@ class OrderItem {
       quantity: quantity,
       price: product.effectivePrice,
       designation: product.description,
-      vat: product.vatCode,
       discount: 0.0,
     );
   }
@@ -137,7 +129,6 @@ class OrderItem {
     int? quantity,
     double? price,
     String? designation,
-    String? vat,
     double? discount,
   }) {
     return OrderItem(
@@ -147,7 +138,6 @@ class OrderItem {
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
       designation: designation ?? this.designation,
-      vat: vat ?? this.vat,
       discount: discount ?? this.discount,
     );
   }

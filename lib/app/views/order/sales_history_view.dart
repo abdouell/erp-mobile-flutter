@@ -101,10 +101,17 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${doc.totalAmount.toStringAsFixed(2)} €',
+                      '${doc.totalAmountTTC.toStringAsFixed(2)} DH',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      'HT: ${doc.totalAmount.toStringAsFixed(2)} DH',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
                       ),
                     ),
                     const SizedBox(height: 4),

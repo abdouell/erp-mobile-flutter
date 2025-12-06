@@ -7,6 +7,7 @@ class SalesDocumentHistory {
   final String status;
   final DateTime documentDate;
   final double totalAmount;
+  final double totalAmountTTC;
   final int customerId;
   final String customerName;
   final int userId;
@@ -22,6 +23,7 @@ class SalesDocumentHistory {
     required this.status,
     required this.documentDate,
     required this.totalAmount,
+    required this.totalAmountTTC,
     required this.customerId,
     required this.customerName,
     required this.userId,
@@ -39,6 +41,7 @@ class SalesDocumentHistory {
       status: json['status'],
       documentDate: DateTime.parse(json['documentDate']),
       totalAmount: (json['totalAmount'] ?? 0.0).toDouble(),
+      totalAmountTTC: (json['totalAmountTTC'] ?? 0.0).toDouble(),
       customerId: json['customerId'],
       customerName: json['customerName'] ?? 'Client inconnu',
       userId: json['userId'],

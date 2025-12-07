@@ -152,18 +152,11 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
   }
 
   void _onDocumentTap(SalesDocumentHistory doc) {
-    if (doc.documentType == 'ORDER') {
-      // Utiliser la route existante de détails commande
-      Get.toNamed('/order-details/${doc.id}');
-    } else {
-      // Pour BL, pas encore de vue dédiée
-      Get.snackbar(
-        'Détail BL',
-        'Affichage détaillé du BL à implémenter',
-        backgroundColor: Colors.blueGrey,
-        colorText: Colors.white,
-      );
-    }
+    // Utiliser la même route pour ORDER et BL
+    // Le type de document sera passé en paramètre
+    Get.toNamed('/order-details/${doc.id}', arguments: {
+      'documentType': doc.documentType,
+    });
   }
 
   Future<void> _downloadPdf(SalesDocumentHistory doc) async {

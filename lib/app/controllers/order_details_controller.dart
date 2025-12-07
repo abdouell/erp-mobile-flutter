@@ -30,6 +30,16 @@ class OrderDetailsController extends GetxController {
     super.onInit();
     // ✅ SOLUTION ROBUSTE: Essayer plusieurs méthodes
     String? orderIdStr;
+    String documentType = 'ORDER'; // Par défaut ORDER
+    
+    // ✅ D'ABORD récupérer le type de document depuis les arguments
+    if (Get.arguments != null && Get.arguments is Map) {
+      final Map args = Get.arguments as Map;
+      if (args.containsKey('documentType')) {
+        documentType = args['documentType'].toString();
+        print('✅ Type de document depuis arguments: $documentType');
+      }
+    }
     
     // 1. Essayer paramètres d'URL (si route configurée)
     if (Get.parameters.containsKey('id')) {
@@ -50,7 +60,7 @@ class OrderDetailsController extends GetxController {
       }
     }
     // 3. Essayer d'extraire depuis l'URL manuellement
-    else {
+    if (orderIdStr == null) {
       final currentRoute = Get.currentRoute;
       final RegExp regExp = RegExp(r'/order-details/(\d+)');
       final match = regExp.firstMatch(currentRoute);
@@ -60,37 +70,41 @@ class OrderDetailsController extends GetxController {
       }
     }
     
-    print('🎯 ID final retenu: $orderIdStr');
+    print('🎯 ID final retenu: $orderIdStr, Type: $documentType');
     
     if (orderIdStr != null) {
-      final int? orderId = int.tryParse(orderIdStr);
-      if (orderId != null) {
-        print('✅ Conversion réussie vers int: $orderId');
-        loadOrderDetails(orderId);
+      final int? docId = int.tryParse(orderIdStr);
+      if (docId != null) {
+        print('✅ Conversion réussie vers int: $docId');
+        loadDocumentDetails(docId, documentType);
       } else {
         print('❌ Impossible de convertir "$orderIdStr" en int');
-        _setError('ID de commande invalide: $orderIdStr');
+        _setError('ID de document invalide: $orderIdStr');
       }
     } else {
       print('❌ Aucun ID trouvé nulle part');
-      _setError('ID de commande manquant - URL: ${Get.currentRoute}');
+      _setError('ID de document manquant - URL: ${Get.currentRoute}');
     }
   }
   
-  /// 📋 CHARGER DÉTAILS COMPLETS
-  Future<void> loadOrderDetails(int orderId) async {
+  /// 📋 CHARGER DÉTAILS D'UN DOCUMENT (ORDER ou BL)
+  Future<void> loadDocumentDetails(int docId, String documentType) async {
     try {
       isLoading.value = true;
       hasError.value = false;
       
-      print('🔄 Chargement commande $orderId...');
+      print('🔄 Chargement document $documentType #$docId...');
       
-      // Charger la commande depuis l'API
-      final loadedOrder = await _orderService.getOrderById(orderId);
+      // Appeler l'API unifiée via SalesService
+      final loadedOrder = await _salesService.getDocumentDetails(
+        type: documentType,
+        id: docId,
+      );
+      
       order.value = loadedOrder;
       orderItems.value = loadedOrder.orderDetails;
       
-      print('✅ Commande chargée: $loadedOrder');
+      print('✅ Document chargé: $loadedOrder');
       print('✅ ${loadedOrder.orderDetails.length} articles');
       
       // Charger les infos client en parallèle (non bloquant)
@@ -99,11 +113,16 @@ class OrderDetailsController extends GetxController {
       }
       
     } catch (e) {
-      print('❌ Erreur chargement commande $orderId: $e');
-      _setError('Impossible de charger la commande: $e');
+      print('❌ Erreur chargement document $docId: $e');
+      _setError('Impossible de charger le document: $e');
     } finally {
       isLoading.value = false;
     }
+  }
+  
+  /// 📋 CHARGER DÉTAILS COMMANDE (pour compatibilité)
+  Future<void> loadOrderDetails(int orderId) async {
+    return loadDocumentDetails(orderId, 'ORDER');
   }
   
   /// 👤 CHARGER INFO CLIENT (non bloquant)

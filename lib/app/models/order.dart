@@ -87,8 +87,8 @@ class Order {
     }
 
     return Order(
-      id: json['id'],
-      userId: json['userId'],
+      id: json['id'] as int?,
+      userId: (json['userId'] as num?)?.toInt() ?? 0,
       createdDate: parsedCreatedDate,
       status: OrderStatus.values.firstWhere(
         (e) => e.name == json['status'],
@@ -103,7 +103,7 @@ class Order {
       totalAmountTTC: json['totalAmountTTC']?.toDouble(), // ✅ NOUVEAU CHAMP
       totalDiscountFromBackend: json['totalDiscount']?.toDouble(), // ✅ NOUVEAU CHAMP
       entrepriseCode: json['entrepriseCode'],
-      customerId: json['customerId'],
+      customerId: (json['customerId'] as num?)?.toInt() ?? 0,
       comment: json['comment'], // ✅ NOUVEAU CHAMP
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),

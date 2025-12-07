@@ -30,8 +30,8 @@ class OrderItem {
     }
     
     // ✅ ÉTAPE 2: Récupérer les données de base
-    final int itemQuantity = json['quantity'] ?? 1;
-    final int itemProductId = json['product']?['id'] ?? json['productId'] ?? 0;
+    final int itemQuantity = (json['quantity'] as num?)?.toInt() ?? 1;
+    final int itemProductId = (json['product']?['id'] as num?)?.toInt() ?? (json['productId'] as num?)?.toInt() ?? 0;
     
     // ✅ ÉTAPE 3: Récupérer le prix - PRIORITÉ AU PRODUIT
     double itemPrice = 0.0;
@@ -68,7 +68,7 @@ class OrderItem {
     }
     
     return OrderItem(
-      id: json['id'],
+      id: json['id'] as int?,
       productId: itemProductId,
       product: itemProduct,
       quantity: itemQuantity,

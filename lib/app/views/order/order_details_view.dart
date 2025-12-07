@@ -461,8 +461,13 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
             ],
             
             _buildSummaryRow(
-              'Total TTC',
+              'Total HT',
               order.formattedTotal,
+            ),
+            SizedBox(height: 8),
+            _buildSummaryRow(
+              'Total TTC',
+              order.formattedTotalTTC,
               isTotal: true,
             ),
           ],

@@ -8,6 +8,7 @@ class OrderItem {
   final double price;
   final String designation;
   final double? discount;
+  final double? lineTotalHT; // ✅ Total HT de la ligne (du backend)
 
   OrderItem({
     this.id,
@@ -17,6 +18,7 @@ class OrderItem {
     required this.price,
     required this.designation,
     this.discount,
+    this.lineTotalHT, // ✅ NOUVEAU PARAMÈTRE
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,12 @@ class OrderItem {
       itemDiscount = (json['discount'] as num).toDouble();
     }
     
+    // ✅ ÉTAPE 6: Gestion du total HT
+    double? itemLineTotalHT;
+    if (json['lineTotalHT'] != null) {
+      itemLineTotalHT = (json['lineTotalHT'] as num).toDouble();
+    }
+    
     return OrderItem(
       id: json['id'],
       productId: itemProductId,
@@ -67,6 +75,7 @@ class OrderItem {
       price: itemPrice,
       designation: itemDesignation,
       discount: itemDiscount,
+      lineTotalHT: itemLineTotalHT, // ✅ NOUVEAU CHAMP
     );
   }
 
@@ -78,6 +87,7 @@ class OrderItem {
       'price': price,
       'designation': designation,
       'discount': discount,
+      'lineTotalHT': lineTotalHT, // ✅ NOUVEAU CHAMP
     };
   }
 
@@ -98,7 +108,10 @@ class OrderItem {
   
   double get discountAmount => discount ?? 0.0;
   
-  double get subtotalAfterDiscount => subtotalBeforeDiscount - discountAmount;
+  double get subtotalAfterDiscount {
+    // Utiliser la valeur du backend si disponible, sinon calculer
+    return lineTotalHT ?? (subtotalBeforeDiscount - discountAmount);
+  }
   
   double get unitPriceAfterDiscount {
     if (quantity == 0) return 0.0;
@@ -130,6 +143,7 @@ class OrderItem {
     double? price,
     String? designation,
     double? discount,
+    double? lineTotalHT, // ✅ NOUVEAU PARAMÈTRE
   }) {
     return OrderItem(
       id: id ?? this.id,
@@ -139,6 +153,7 @@ class OrderItem {
       price: price ?? this.price,
       designation: designation ?? this.designation,
       discount: discount ?? this.discount,
+      lineTotalHT: lineTotalHT ?? this.lineTotalHT, // ✅ NOUVEAU CHAMP
     );
   }
 

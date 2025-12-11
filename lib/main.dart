@@ -1,5 +1,6 @@
 import 'package:erp_mobile/app/controllers/order_details_controller.dart';
 import 'package:erp_mobile/app/controllers/order_list_controller.dart';
+import 'package:erp_mobile/app/controllers/payment_controller.dart';
 import 'package:erp_mobile/app/services/customer_service.dart';
 import 'package:erp_mobile/app/services/sales_service.dart';
 
@@ -8,6 +9,8 @@ import 'package:erp_mobile/app/views/client/client_detail_view.dart';
 import 'package:erp_mobile/app/views/order/order_details_view.dart';
 import 'package:erp_mobile/app/views/order/order_list_view.dart';
 import 'package:erp_mobile/app/views/order/sales_history_view.dart';
+import 'package:erp_mobile/app/views/payments/bl_payments_view.dart';
+import 'package:erp_mobile/app/views/payments/add_payment_view.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -159,6 +162,23 @@ Widget build(BuildContext context) {
         GetPage(
           name: '/sales-history',
           page: () => const SalesHistoryView(),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
+        
+        // ROUTES PAIEMENTS
+        GetPage(
+          name: '/bl-payments',
+          page: () => BlPaymentsView(),
+          binding: BindingsBuilder(() {
+            Get.lazyPut<PaymentController>(() => PaymentController());
+          }),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
+        GetPage(
+          name: '/add-payment',
+          page: () => AddPaymentView(),
           transition: Transition.rightToLeft,
           transitionDuration: Duration(milliseconds: 300),
         ),

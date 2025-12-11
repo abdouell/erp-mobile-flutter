@@ -544,6 +544,9 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
       final order = controller.order.value;
       if (order == null) return SizedBox.shrink();
       
+      // Récupérer le type de document
+      final documentType = Get.arguments?['documentType'] ?? 'ORDER';
+      
       return Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -571,6 +574,27 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
             ),
             
             SizedBox(width: 12),
+            
+            // Bouton Paiements (visible uniquement pour les BL)
+            if (documentType == 'BL') ...[
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Get.toNamed('/bl-payments', arguments: {
+                      'order': order,
+                      'documentType': documentType,
+                    });
+                  },
+                  icon: Icon(Icons.payments),
+                  label: Text('Paiements'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.green,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+            ],
             
             // Bouton Nouvelle commande pour ce client
             Expanded(

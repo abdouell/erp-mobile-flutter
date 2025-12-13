@@ -11,6 +11,7 @@ import 'package:erp_mobile/app/views/order/order_list_view.dart';
 import 'package:erp_mobile/app/views/order/sales_history_view.dart';
 import 'package:erp_mobile/app/views/payments/bl_payments_view.dart';
 import 'package:erp_mobile/app/views/payments/add_payment_view.dart';
+import 'package:erp_mobile/app/views/payments/customer_payments_view.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -23,6 +24,7 @@ import 'app/services/api_service.dart';
 import 'app/services/tournee_service.dart';
 import 'app/services/product_service.dart';
 import 'app/services/order_service.dart';
+import 'app/services/payment_service.dart';
 import 'app/services/location_service.dart';
 
 import 'app/controllers/auth_controller.dart';
@@ -46,6 +48,9 @@ void main() async {
   Get.put(AuthController());
   Get.put(TourneeController());
   Get.put(OrderController());
+  Get.put(PaymentService());
+
+
 
   
   runApp(MyApp());
@@ -179,6 +184,15 @@ Widget build(BuildContext context) {
         GetPage(
           name: '/add-payment',
           page: () => AddPaymentView(),
+          transition: Transition.rightToLeft,
+          transitionDuration: Duration(milliseconds: 300),
+        ),
+        GetPage(
+          name: '/customer-payments',
+          page: () => CustomerPaymentsView(
+            customerId: Get.arguments['customerId'],
+            customerName: Get.arguments['customerName'],
+          ),
           transition: Transition.rightToLeft,
           transitionDuration: Duration(milliseconds: 300),
         ),

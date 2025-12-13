@@ -72,6 +72,7 @@ class ClientDetailView extends GetView<TourneeController> {
                 child: Column(
                   children: [
                     _buildClientHeader(client),
+                    _buildQuickLinksSection(client),
                     _buildCurrentVisitSection(client),
                     _buildVisitHistorySection(client),
                   ],
@@ -190,6 +191,95 @@ class ClientDetailView extends GetView<TourneeController> {
       ),
     );
   }
+
+  // ========================================
+    // LIENS RAPIDES
+    // ========================================
+
+    Widget _buildQuickLinksSection(ClientTournee client) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Card(
+          elevation: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(Icons.link, size: 18, color: Colors.grey.shade700),
+                    SizedBox(width: 8),
+                    Text(
+                      'Liens rapides',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1),
+
+              // Lien Historique paiements
+              InkWell(
+                onTap: () {
+                  Get.toNamed('/customer-payments', arguments: {
+                    'customerId': client.customerId,
+                    'customerName': client.customerName,
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.payment,
+                          color: Colors.green.shade700,
+                          size: 20,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Historique paiements',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Voir tous les paiements du client',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
   Widget _buildStatItem(IconData icon, String value, String label, Color color) {
     return Column(

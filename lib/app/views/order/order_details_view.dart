@@ -11,8 +11,8 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
       appBar: AppBar(
         title: Text(
           controller.order.value != null 
-              ? 'Commande #${controller.order.value!.id}'
-              : 'Détails commande'
+              ? '${_getDocumentTypeLabel(Get.arguments?['documentType'] ?? 'ORDER')} #${controller.order.value!.id}'
+              : 'Détails document'
         ),
         backgroundColor: _getStatusColor(controller.order.value?.status),
         foregroundColor: Colors.white,
@@ -171,7 +171,7 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Informations commande',
+              'Informations ${_getDocumentTypeLabel(Get.arguments?['documentType'] ?? 'ORDER').toLowerCase()}',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 12),
@@ -637,6 +637,23 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
         return Icons.cancel;
       case null:
         return Icons.help;
+    }
+  }
+
+  /// 🏷️ MAP DOCUMENT TYPE TO FRENCH LABEL
+  String _getDocumentTypeLabel(String documentType) {
+    switch (documentType) {
+      case 'BL':
+        return 'Bon de livraison';
+      case 'CREDIT_NOTE':
+        return 'Avoir';
+      case 'RETURN_REQUEST':
+        return 'Demande de retour';
+      case 'INVOICE':
+        return 'Facture';
+      case 'ORDER':
+      default:
+        return 'Commande';
     }
   }
 }

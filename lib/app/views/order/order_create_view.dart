@@ -475,6 +475,8 @@ Future<void> _performClotureVisite(ClientTournee client, String motif, String? n
                   controller.errorMessage.value,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey.shade600),
+                  maxLines: 10,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 24),
                 Row(

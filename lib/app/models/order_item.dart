@@ -132,8 +132,6 @@ class OrderItem {
   
   String get productName => product?.description ?? designation;
   
-  String get productBrand => product?.brand ?? '';
-
   /// ✏️ copyWith pour modifications immutables
   OrderItem copyWith({
     int? id,

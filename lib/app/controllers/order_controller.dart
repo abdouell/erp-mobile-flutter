@@ -791,7 +791,23 @@ void clearCart() {
   /// ❌ GESTION ERREURS
   void _handleError(String title, dynamic error) {
     hasError.value = true;
-    errorMessage.value = error.toString().replaceAll('Exception: ', '');
+    
+    // Extraire un message d'erreur concis et lisible
+    String message;
+    if (error is Exception) {
+      message = error.toString().replaceAll('Exception: ', '');
+    } else if (error is Error) {
+      message = error.toString();
+    } else {
+      message = error.toString();
+    }
+    
+    // Limiter la longueur du message à 500 caractères
+    if (message.length > 500) {
+      message = message.substring(0, 500) + '...';
+    }
+    
+    errorMessage.value = message;
     
     Get.snackbar(
       title,

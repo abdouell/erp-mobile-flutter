@@ -45,20 +45,41 @@ void onInit() {
   print('ApiService initialized with base URL: ${ApiConstants.BASE_URL}');
 }
   
- Future<LoginResponse> login(String username, String password) async {
+   Future<LoginResponse> login(String username, String password) async {
   try {
-    final data = {'username': username, 'password': password};
+    final data = {
+      'username': username, 
+      'password': password,
+      'app': 'MOBILE'
+    };
     final response = await _dio.post('/api/user/login', data: data);
     
     return LoginResponse.fromJson(response.data);
     
   } on DioException catch (e) {
+    print('=== LOGIN ERROR DEBUG ===');
+    print('Status Code: ${e.response?.statusCode}');
+    print('Response Data: ${e.response?.data}');
+    print('Error Type: ${e.type}');
+    
     if (e.response?.statusCode == 401) {
-      // Le 401 sera maintenant en Map aussi
-      throw 'Identifiants invalides';
-    } else {
+      // Get error message from backend
+      String errorMsg = e.response?.data?.toString() ?? '';
+      print('Error Message: $errorMsg');
+      
+      if (errorMsg.contains('Access denied')) {
+        throw 'Vous n\'avez pas accès à l\'application mobile';
+      } else {
+        throw 'Nom d\'utilisateur ou mot de passe incorrect';
+      }
+    } else if (e.response != null) {
       throw 'Erreur serveur: ${e.response?.statusCode}';
+    } else {
+      throw 'Erreur de connexion: Impossible de contacter le serveur';
     }
+  } catch (e) {
+    print('Unexpected error: $e');
+    rethrow;
   }
 }
 

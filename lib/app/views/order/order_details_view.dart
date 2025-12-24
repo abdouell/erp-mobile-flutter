@@ -211,8 +211,6 @@ class OrderDetailsView extends GetView<OrderDetailsController> {
               if (customer != null) ...[
                 _buildInfoRow(Icons.person, 'Nom', customer.name ?? 'N/A'),
                 _buildInfoRow(Icons.location_on, 'Adresse', customer.address ?? 'N/A'),
-                if (customer.rc?.isNotEmpty == true)
-                  _buildInfoRow(Icons.business, 'RC', customer.rc!),
                 if (customer.phone1?.isNotEmpty == true)
                   _buildInfoRow(Icons.phone, 'Téléphone', customer.phone1!),
               ] else ...[

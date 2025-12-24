@@ -345,7 +345,7 @@ Statut: ${currentOrder.statusDisplay}
       customerId: currentOrder.customerId,
       customerName: customer.displayName,
       customerAddress: customer.fullAddress,
-      customerRc: customer.rc ?? '',
+      customerRc: '', // RC field removed from simplified Customer model
       ordre: 0,
     );
     

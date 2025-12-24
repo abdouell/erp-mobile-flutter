@@ -149,11 +149,17 @@ class TourneeController extends GetxController {
   /// Retourne le visiteId créé via VisitStatusResponse
   Future<void> checkinClient(int clientTourneeId) async {
     try {
-      print('🔄 Check-in client $clientTourneeId');
+      print('📍 Check-in client $clientTourneeId');
       
       // Récupérer position GPS
       final locationService = Get.find<LocationService>();
       final position = await locationService.getCurrentPosition();
+      
+      if (position != null) {
+        print('📍 GPS: Check-in successful (accuracy: ${position.accuracy}m)');
+      } else {
+        print('📍 GPS: Check-in failed, using null position');
+      }
       
       // Appel API - crée une nouvelle visite et fait le check-in
       final response = await _tourneeService.checkinCustomer(
@@ -163,62 +169,13 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print(' Check-in effectué, visiteId: ${response.visiteId}');
+      print('📍 Check-in completed, visiteId: ${response.visiteId}');
       
       // Recharger automatiquement la tournée pour avoir les données à jour
       await refresh();
       
-      // DEBUG : Afficher TOUS les clients avec leurs visites
-      print(' ========== DEBUG APRÈS REFRESH ==========');
-      // 🔍 DEBUG : Afficher TOUS les clients avec leurs visites
-      print('🔍 ========== DEBUG APRÈS REFRESH ==========');
-      print('  tourneeToday existe: ${tourneeToday.value != null}');
-      if (tourneeToday.value != null) {
-        print('  Tournée ID: ${tourneeToday.value!.id}');
-        print('  Nombre total de clients: ${tourneeToday.value!.clients.length}');
-        print('  Nombre total de visites (tournée): ${tourneeToday.value!.nombreTotalVisites}');
-        print('');
-        print('  📋 DÉTAIL DE CHAQUE CLIENT:');
-        
-        for (var client in tourneeToday.value!.clients) {
-          print('  ┌─ Client ID=${client.id} - ${client.customerName}');
-          print('  │  Statut: ${client.statutVisite}');
-          print('  │  Nombre de visites: ${client.visites.length}');
-          
-          if (client.visites.isNotEmpty) {
-            for (var i = 0; i < client.visites.length; i++) {
-              final visite = client.visites[i];
-              print('  │  ├─ Visite ${i + 1}:');
-              print('  │  │  id: ${visite.id}');
-              print('  │  │  statut: ${visite.statutVisite}');
-              print('  │  │  checkin: ${visite.checkinAt}');
-              print('  │  │  checkout: ${visite.checkoutAt}');
-            }
-          } else {
-            print('  │  └─ Aucune visite');
-          }
-          print('  └─');
-        }
-        
-        print('');
-        print('  🎯 Client recherché (ID=$clientTourneeId):');
-        final targetClient = tourneeToday.value!.clients
-            .firstWhereOrNull((c) => c.id == clientTourneeId);
-        if (targetClient != null) {
-          print('     ✅ TROUVÉ');
-          print('     Visites: ${targetClient.visites.length}');
-          print('     Statut: ${targetClient.statutVisite}');
-        } else {
-          print('     ❌ NON TROUVÉ');
-        }
-      }
-      print('🔍 ==========================================');
-      
-      // ✅ IMPORTANT : Attendre que GetX propage la nouvelle valeur aux observateurs
-      await Future.delayed(Duration(milliseconds: 100));
-      
     } catch (e) {
-      print('❌ Erreur check-in: $e');
+      print('📍 Check-in failed: $e');
       rethrow;
     }
   }
@@ -227,11 +184,17 @@ class TourneeController extends GetxController {
   /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
   Future<void> checkoutWithOrder(int visiteId) async {
     try {
-      print('🛒 Check-out avec commande visite $visiteId');
+      print('📍 Checkout with order visite $visiteId');
       
       // Récupérer position GPS
       final locationService = Get.find<LocationService>();
       final position = await locationService.getCurrentPosition();
+      
+      if (position != null) {
+        print('📍 GPS: Checkout successful (accuracy: ${position.accuracy}m)');
+      } else {
+        print('📍 GPS: Checkout failed, using null position');
+      }
       
       // Appel API
       await _tourneeService.checkoutVisiteWithOrder(
@@ -240,13 +203,13 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print('✅ Check-out avec commande effectué');
+      print('📍 Checkout with order completed');
       
       // Recharger automatiquement la tournée
       await refresh();
       
     } catch (e) {
-      print('❌ Erreur checkout avec commande: $e');
+      print('📍 Checkout with order failed: $e');
       rethrow;
     }
   }
@@ -259,11 +222,17 @@ class TourneeController extends GetxController {
     String? note,
   ) async {
     try {
-      print('🔄 Check-out sans vente visite $visiteId - Motif: $motif');
+      print('📍 Checkout without order visite $visiteId - Motif: $motif');
       
       // Récupérer position GPS
       final locationService = Get.find<LocationService>();
       final position = await locationService.getCurrentPosition();
+      
+      if (position != null) {
+        print('📍 GPS: Checkout successful (accuracy: ${position.accuracy}m)');
+      } else {
+        print('📍 GPS: Checkout failed, using null position');
+      }
       
       // Appel API
       await _tourneeService.checkoutVisiteWithoutOrder(
@@ -274,13 +243,13 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print('✅ Check-out sans vente effectué');
+      print('📍 Checkout without order completed');
       
       // Recharger automatiquement la tournée
       await refresh();
       
     } catch (e) {
-      print('❌ Erreur checkout sans commande: $e');
+      print('📍 Checkout without order failed: $e');
       rethrow;
     }
   }

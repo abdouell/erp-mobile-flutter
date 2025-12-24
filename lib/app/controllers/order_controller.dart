@@ -378,8 +378,16 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     print('📄 Début validation...');
 
     // Récupérer la géolocalisation
+    print('📍 Starting order validation...');
+    
     final locationService = Get.find<LocationService>();
     final position = await locationService.getCurrentPosition();
+    
+    if (position != null) {
+      print('📍 GPS: Order validation successful (accuracy: ${position.accuracy}m)');
+    } else {
+      print('📍 GPS: Order validation failed, using null position');
+    }
     
     double? latitude = position?.latitude;
     double? longitude = position?.longitude;

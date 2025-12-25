@@ -17,7 +17,11 @@ void onInit() {
   _dio.options.baseUrl = ApiConstants.BASE_URL;
   _dio.options.connectTimeout = Duration(seconds: 30);
   _dio.options.receiveTimeout = Duration(seconds: 30);
-  _dio.options.headers = ApiConstants.HEADERS;
+  _dio.options.headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/plain', // Accept both JSON and plain text
+  };
+  _dio.options.responseType = ResponseType.plain; // Don't auto-parse as JSON
   
   // ✅ AJOUTEZ ICI l'intercepteur JWT
   _dio.interceptors.add(InterceptorsWrapper(
@@ -45,31 +49,59 @@ void onInit() {
   print('ApiService initialized with base URL: ${ApiConstants.BASE_URL}');
 }
   
-  Future<LoginResponse> login(String username, String password) async {
+ Future<LoginResponse> login(String username, String password) async {
   try {
     final data = {
-      'username': username, 
+      'username': username,
       'password': password,
       'app': 'MOBILE'
     };
-    final response = await _dio.post('/api/user/login', data: data);
     
-    return LoginResponse.fromJson(response.data);
+    // Create a new Dio instance just for login with plain text response handling
+    final loginDio = Dio();
+    loginDio.options.baseUrl = ApiConstants.BASE_URL;
+    loginDio.options.connectTimeout = Duration(seconds: 30);
+    loginDio.options.receiveTimeout = Duration(seconds: 30);
+    loginDio.options.headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/plain',
+    };
+    loginDio.options.responseType = ResponseType.plain; // Handle as plain text
     
-  } on DioException catch (e) {
-    if (e.response?.statusCode == 401) {
-      // Get error message from backend
-      String errorMsg = e.response?.data?.toString() ?? 'Identifiants invalides';
-      
-      if (errorMsg.contains('Access denied')) {
-        throw 'Vous n\'avez pas accès à l\'application mobile';
-      } else {
-        throw 'Nom d\'utilisateur ou mot de passe incorrect';
-      }
+    final response = await loginDio.post('/api/user/login', data: data);
+    
+    // Parse response manually
+    String responseData = response.data.toString();
+    
+    if (responseData.contains('Invalid credentials')) {
+      // This is an error response as plain text
+      throw 'Identifiants invalides';
+    } else if (responseData.contains('"token"')) {
+      // This is a success response as JSON - parse it
+      final jsonData = jsonDecode(responseData);
+      return LoginResponse.fromJson(jsonData);
     } else {
-      throw 'Erreur serveur: ${e.response?.statusCode ?? 'inconnue'}';
+      throw 'Erreur serveur: $responseData';
     }
+
+  } on DioException catch (e) {
+    print('=== LOGIN ERROR DEBUG ===');
+    print('Status Code: ${e.response?.statusCode}');
+    print('Response Data: ${e.response?.data}');
+    print('Error Type: ${e.type}');
+    
+    // Handle plain text error responses from backend
+    if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+      // Backend returns plain text: "Invalid credentials"
+      throw 'Identifiants invalides';
+    } else if (e.response != null) {
+      throw 'Erreur serveur: ${e.response?.statusCode}';
+    } else {
+      throw 'Erreur de connexion: Impossible de contacter le serveur';
+    }
+  } catch (e) {
+    print('Unexpected error: $e');
+    rethrow;
   }
 }
-
 }

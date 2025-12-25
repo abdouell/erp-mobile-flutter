@@ -21,7 +21,10 @@ void onInit() {
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/plain', // Accept both JSON and plain text
   };
-  _dio.options.responseType = ResponseType.plain; // Don't auto-parse as JSON
+  
+  print('=== MAIN API SERVICE CONFIG ===');
+  print('Response Type: ${_dio.options.responseType}');
+  print('Base URL: ${_dio.options.baseUrl}');
   
   // ✅ AJOUTEZ ICI l'intercepteur JWT
   _dio.interceptors.add(InterceptorsWrapper(
@@ -57,7 +60,7 @@ void onInit() {
       'app': 'MOBILE'
     };
     
-    // Create a new Dio instance just for login with plain text response handling
+    // Create separate Dio instance just for login to handle plain text error responses
     final loginDio = Dio();
     loginDio.options.baseUrl = ApiConstants.BASE_URL;
     loginDio.options.connectTimeout = Duration(seconds: 30);
@@ -66,7 +69,7 @@ void onInit() {
       'Content-Type': 'application/json',
       'Accept': 'application/json, text/plain',
     };
-    loginDio.options.responseType = ResponseType.plain; // Handle as plain text
+    loginDio.options.responseType = ResponseType.plain; // Only for login
     
     final response = await loginDio.post('/api/user/login', data: data);
     

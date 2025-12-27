@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import '../models/login_response.dart';
 import '../../core/constants/api_constants.dart';
 import 'dart:convert';
@@ -36,10 +37,65 @@ void onInit() {
       handler.next(options);
     },
     onError: (error, handler) {
-      // Handle API errors
+      // Global error handling for all API calls
+      _handleApiError(error);
       handler.next(error);
     },
   ));
+}
+
+void _handleApiError(DioException error) {
+  String message = 'Une erreur est survenue';
+  
+  if (error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.sendTimeout ||
+      error.type == DioExceptionType.receiveTimeout) {
+    message = 'Délai d\'attente dépassé';
+  } else if (error.type == DioExceptionType.connectionError) {
+    message = 'Problème de connexion';
+  } else if (error.type == DioExceptionType.badResponse) {
+    final statusCode = error.response?.statusCode;
+    
+    switch (statusCode) {
+      case 400:
+      case 422:
+        message = 'Données invalides';
+        break;
+      case 401:
+        message = 'Session expirée';
+        _logoutAndRedirect();
+        break;
+      case 403:
+        message = 'Accès non autorisé';
+        break;
+      case 404:
+        message = 'Ressource non trouvée';
+        break;
+      case 500:
+      case 502:
+      case 503:
+        message = 'Erreur serveur';
+        break;
+      default:
+        message = 'Erreur serveur: $statusCode';
+    }
+  }
+  
+  // Show user-friendly message
+  Get.snackbar(
+    'Erreur',
+    message,
+    backgroundColor: Colors.red,
+    colorText: Colors.white,
+    duration: Duration(seconds: 3),
+  );
+}
+
+void _logoutAndRedirect() {
+  final storage = GetStorage();
+  storage.remove('auth_token');
+  storage.remove('user');
+  Get.offAllNamed('/');
 }
   
  Future<LoginResponse> login(String username, String password) async {

@@ -104,16 +104,27 @@ class TourneeController extends GetxController {
   /// Retourne le visiteId créé via VisitStatusResponse
   Future<void> checkinClient(int clientTourneeId) async {
     try {
-      // Récupérer position GPS
-      final locationService = Get.find<LocationService>();
-      final position = await locationService.getCurrentPosition();
+      // Récupérer position GPS avec gestion d'erreur plateforme
+      double? latitude;
+      double? longitude;
+      
+      try {
+        final locationService = Get.find<LocationService>();
+        final position = await locationService.getCurrentPosition();
+        latitude = position?.latitude;
+        longitude = position?.longitude;
+      } catch (e) {
+        // Continue without GPS coordinates for unsupported platforms
+        latitude = null;
+        longitude = null;
+      }
       
       // Appel API - crée une nouvelle visite et fait le check-in
       final response = await _tourneeService.checkinCustomer(
         clientTourneeId,
         vendeur.value!.id,
-        latitude: position?.latitude,
-        longitude: position?.longitude,
+        latitude: latitude,
+        longitude: longitude,
       );
       
       // Recharger automatiquement la tournée pour avoir les données à jour
@@ -128,18 +139,28 @@ class TourneeController extends GetxController {
   /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
   Future<void> checkoutWithOrder(int visiteId) async {
     try {
-      // Récupérer position GPS
-      final locationService = Get.find<LocationService>();
-      final position = await locationService.getCurrentPosition();
+      // Récupérer position GPS avec gestion d'erreur plateforme
+      double? latitude;
+      double? longitude;
+      
+      try {
+        final locationService = Get.find<LocationService>();
+        final position = await locationService.getCurrentPosition();
+        latitude = position?.latitude;
+        longitude = position?.longitude;
+      } catch (e) {
+        // Continue without GPS coordinates for unsupported platforms
+        latitude = null;
+        longitude = null;
+      }
       
       // Appel API
       await _tourneeService.checkoutVisiteWithOrder(
         visiteId,
-        latitude: position?.latitude,
-        longitude: position?.longitude,
+        latitude: latitude,
+        longitude: longitude,
       );
       
-
       // Recharger automatiquement la tournée
       await refresh();
       
@@ -156,21 +177,30 @@ class TourneeController extends GetxController {
     String? note,
   ) async {
     try {
-
-      // Récupérer position GPS
-      final locationService = Get.find<LocationService>();
-      final position = await locationService.getCurrentPosition();
+      // Récupérer position GPS avec gestion d'erreur plateforme
+      double? latitude;
+      double? longitude;
+      
+      try {
+        final locationService = Get.find<LocationService>();
+        final position = await locationService.getCurrentPosition();
+        latitude = position?.latitude;
+        longitude = position?.longitude;
+      } catch (e) {
+        // Continue without GPS coordinates for unsupported platforms
+        latitude = null;
+        longitude = null;
+      }
       
       // Appel API
       await _tourneeService.checkoutVisiteWithoutOrder(
         visiteId,
         motif,
         note,
-        latitude: position?.latitude,
-        longitude: position?.longitude,
+        latitude: latitude,
+        longitude: longitude,
       );
       
-
       // Recharger automatiquement la tournée
       await refresh();
       

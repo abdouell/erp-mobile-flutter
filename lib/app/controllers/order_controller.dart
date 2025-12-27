@@ -76,35 +76,29 @@ class OrderController extends GetxController {
   
   /// 🚀 INITIALISATION - Appelée depuis la vue
   Future<void> initializeOrder(ClientTournee client) async {
-    try {
-      // Vérifications de sécurité
-      if (client.customerId <= 0) {
-        throw Exception('Client invalide: ID manquant');
-      }
-      
-      selectedClient.value = client;
-      
-      // Créer nouvelle commande
-      final user = _authController.user.value;
-      if (user == null) {
-        throw Exception('Utilisateur non connecté');
-      }
-      
-      currentOrder.value = _orderService.createNewOrder(
-        userId: user.id,
-        customerId: client.customerId,
-      );
-      
-      // Vider le panier précédent
-      clearCart();
-      
-      // Charger les données produits
-      await _loadInitialData();
-      
-
-    } catch (e) {
-      _handleError('Erreur initialisation commande', e);
+    // Vérifications de sécurité
+    if (client.customerId <= 0) {
+      throw Exception('Client invalide: ID manquant');
     }
+    
+    selectedClient.value = client;
+    
+    // Créer nouvelle commande
+    final user = _authController.user.value;
+    if (user == null) {
+      throw Exception('Utilisateur non connecté');
+    }
+    
+    currentOrder.value = _orderService.createNewOrder(
+      userId: user.id,
+      customerId: client.customerId,
+    );
+    
+    // Vider le panier précédent
+    clearCart();
+    
+    // Charger les données produits
+    await _loadInitialData();
   }
   
   /// 📦 CHARGEMENT DONNÉES INITIALES
@@ -112,11 +106,11 @@ class OrderController extends GetxController {
       // ✅ Charger les produits d'abord (filtrés selon vendeur)
       await _loadProducts();
       
-      // ✅ Puis extraire les catégories des produits chargés
+      // Puis extraire les catégories des produits chargés
       await _loadCategories();
   }
   
-/// 📦 CHARGER PRODUITS - AVEC TARIFICATION CLIENT
+/// CHARGER PRODUITS - AVEC TARIFICATION CLIENT
 Future<void> _loadProducts() async {
   try {
     isLoadingProducts.value = true;
@@ -129,26 +123,26 @@ Future<void> _loadProducts() async {
     
     final customerId = selectedClient.value!.customerId;
 
-    // ✅ RÉCUPÉRER LE VENDEUR (pour l'emplacement) ET LE SCÉNARIO COURANT
+    // RÉCUPÉRER LE VENDEUR (pour l'emplacement) ET LE SCÉNARIO COURANT
     final tourneeController = Get.find<TourneeController>();
     final vendeur = tourneeController.vendeur.value;
     
-    if (vendeur == null) {
-      throw Exception('Informations vendeur non disponibles');
-    }
-    
-    final String saleType = currentSaleType.value;
-    
     List<Product> products;
     
-    // ✅ LOGIQUE CONDITIONNELLE SELON SCÉNARIO DE VENTE
+    if (vendeur == null) {
+      throw Exception('Aucun vendeur trouvé');
+    }
+  
+    final String saleType = currentSaleType.value;
+  
+    // LOGIQUE CONDITIONNELLE SELON SCÉNARIO DE VENTE
     // Retours : même logique que ORDER (tous les produits, pas de contrôle stock)
     final isReturn = saleType == 'RETURN_CONFORME' || saleType == 'RETURN_NON_CONFORME';
-    
+  
     if (saleType == 'BL' && vendeur.hasEmplacement && !isReturn) {
       // Scénario BL → Produits en stock sur l'emplacement du vendeur + tarification client EN UN SEUL APPEL
       
-      // ✅ UN SEUL APPEL : stock + pricing client avec vérification de période PriceList
+      // UN SEUL APPEL : stock + pricing client avec vérification de période PriceList
       products = await _productService.getProductsByEmplacement(
         vendeur.emplacementCode!,
         customerId: customerId,
@@ -166,31 +160,32 @@ Future<void> _loadProducts() async {
     final withDiscount = products.where((p) => p.hasDiscount).length;
     
   } catch (e) {
-    _handleError('Erreur chargement produits', e);
+    hasError.value = true;
+    errorMessage.value = e.toString();
+    
+    Get.snackbar(
+      'Erreur',
+      'Impossible de charger les produits: $e',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+    );
   } finally {
     isLoadingProducts.value = false;
   }
 }
 
-/// 📂 CHARGER CATÉGORIES - À PARTIR DES PRODUITS FILTRÉS
+/// CHARGER CATÉGORIES - À PARTIR DES PRODUITS FILTRÉS
 Future<void> _loadCategories() async {
-  try {
-    
-    // ✅ Extraire les catégories UNIQUEMENT des produits filtrés (allProducts)
-    final categorySet = allProducts
-        .map((product) => product.productCategoryCode)
-        .toSet(); // Utiliser Set pour éliminer les doublons
-    
-    final categoryList = categorySet.toList();
-    categoryList.sort(); // Tri alphabétique
-    
-    categories.value = categoryList;
-    
-
-  } catch (e) {
-    // Non bloquant, on continue sans catégories
-    categories.value = [];
-  }
+  // Extraire les catégories UNIQUEMENT des produits filtrés (allProducts)
+  final categorySet = allProducts
+      .map((product) => product.productCategoryCode)
+      .toSet(); // Utiliser Set pour éliminer les doublons
+  
+  final categoryList = categorySet.toList();
+  categoryList.sort(); // Tri alphabétique
+  
+  categories.value = categoryList;
 }
   
   /// 🔍 RECHERCHE PRODUITS
@@ -220,110 +215,93 @@ Future<void> _loadCategories() async {
   
 /// 🛒 AJOUTER AU PANIER - AVEC VALIDATION STOCK
 void addToCart(Product product, {int quantity = 1}) {
-  try {
-
-    if (!product.isAvailable) {
-      Get.snackbar('Produit indisponible', '${product.displayName} n\'est pas disponible');
-      return;
-    }
+  if (!product.isAvailable) {
+    Get.snackbar('Produit indisponible', '${product.displayName} n\'est pas disponible');
+    return;
+  }
+  
+  // ✅ NOUVEAU : Vérifier le stock avant d'ajouter
+  final existingItem = cartItems.firstWhereOrNull((item) => item.productId == product.id);
+  final currentQuantityInCart = existingItem?.quantity ?? 0;
+  final newTotalQuantity = currentQuantityInCart + quantity;
+  
+  // Vérifier si stock suffisant
+  if (!_isStockAvailable(product, newTotalQuantity)) {
+    final maxAvailable = _getMaxAvailableQuantity(product);
+    final canStillAdd = maxAvailable - currentQuantityInCart;
     
-    // ✅ NOUVEAU : Vérifier le stock avant d'ajouter
-    final existingItem = cartItems.firstWhereOrNull((item) => item.productId == product.id);
-    final currentQuantityInCart = existingItem?.quantity ?? 0;
-    final newTotalQuantity = currentQuantityInCart + quantity;
-    
-    // Vérifier si stock suffisant
-    if (!_isStockAvailable(product, newTotalQuantity)) {
-      final maxAvailable = _getMaxAvailableQuantity(product);
-      final canStillAdd = maxAvailable - currentQuantityInCart;
-      
-      if (canStillAdd <= 0) {
-        Get.snackbar(
-          'Stock insuffisant',
-          product.isOutOfStock 
-            ? '${product.displayName} est en rupture de stock'
-            : 'Stock maximum atteint (${product.stockDisponible} disponibles)',
-          backgroundColor: Get.theme.colorScheme.error,
-          colorText: Get.theme.colorScheme.onError,
-          duration: Duration(seconds: 3),
-        );
-      } else {
-        Get.snackbar(
-          'Stock limité',
-          'Vous pouvez ajouter maximum $canStillAdd unité(s) de plus\n(Stock disponible: ${product.stockDisponible})',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          duration: Duration(seconds: 3),
-        );
-      }
-      return;
-    }
-    
-    final existingIndex = cartItems.indexWhere((item) => item.productId == product.id);
-    
-    if (existingIndex >= 0) {
-      // Produit existe -> augmenter quantité
-      final existingItem = cartItems[existingIndex];
-      final newQuantity = existingItem.quantity + quantity;
-      cartItems[existingIndex] = existingItem.updateQuantity(newQuantity);
-      
+    if (canStillAdd <= 0) {
       Get.snackbar(
-        'Quantité mise à jour',
-        '${product.displayName}: ${existingItem.quantity} → $newQuantity',
-        duration: Duration(seconds: 1),
+        'Stock insuffisant',
+        product.isOutOfStock 
+          ? '${product.displayName} est en rupture de stock'
+          : 'Stock maximum atteint (${product.stockDisponible} disponibles)',
+        backgroundColor: Get.theme.colorScheme.error,
+        colorText: Get.theme.colorScheme.onError,
+        duration: Duration(seconds: 3),
       );
     } else {
-      // Nouveau produit
-      final newItem = OrderItem.fromProduct(product, quantity);
-      cartItems.add(newItem);
-      
       Get.snackbar(
-        'Produit ajouté',
-        '${product.displayName} x$quantity',
-        duration: Duration(seconds: 1),
+        'Stock limité',
+        'Vous pouvez ajouter maximum $canStillAdd unité(s) de plus\n(Stock disponible: ${product.stockDisponible})',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
       );
     }
+    return;
+  }
+  
+  final existingIndex = cartItems.indexWhere((item) => item.productId == product.id);
+  
+  if (existingIndex >= 0) {
+    // Produit existe -> augmenter quantité
+    final existingItem = cartItems[existingIndex];
+    final newQuantity = existingItem.quantity + quantity;
+    cartItems[existingIndex] = existingItem.updateQuantity(newQuantity);
     
-
-  } catch (e) {
-    _handleError('Erreur ajout panier', e);
+    Get.snackbar(
+      'Quantité mise à jour',
+      '${product.displayName}: ${existingItem.quantity} → $newQuantity',
+      duration: Duration(seconds: 1),
+    );
+  } else {
+    // Nouveau produit
+    final newItem = OrderItem.fromProduct(product, quantity);
+    cartItems.add(newItem);
+    
+    Get.snackbar(
+      'Produit ajouté',
+      '${product.displayName} x$quantity',
+      duration: Duration(seconds: 1),
+    );
   }
 }
 
   /// 🛒 METTRE À JOUR QUANTITÉ
   void updateCartItemQuantity(int productId, int newQuantity) {
-    try {
-      if (newQuantity <= 0) {
-        removeFromCart(productId);
-        return;
-      }
-      
-      final index = cartItems.indexWhere((item) => item.productId == productId);
-      if (index >= 0) {
-        cartItems[index] = cartItems[index].updateQuantity(newQuantity);
-      }
-      
-    } catch (e) {
-      _handleError('Erreur mise à jour quantité', e);
+    if (newQuantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    
+    final index = cartItems.indexWhere((item) => item.productId == productId);
+    if (index >= 0) {
+      cartItems[index] = cartItems[index].updateQuantity(newQuantity);
     }
   }
   
   /// 🛒 SUPPRIMER DU PANIER
   void removeFromCart(int productId) {
-    try {
-      final removedItem = cartItems.firstWhereOrNull((item) => item.productId == productId);
-      cartItems.removeWhere((item) => item.productId == productId);
-      
-      if (removedItem != null) {
-        Get.snackbar(
-          'Produit retiré',
-          removedItem.productName,
-          duration: Duration(seconds: 1),
-        );
-      }
-      
-    } catch (e) {
-      _handleError('Erreur suppression panier', e);
+    final removedItem = cartItems.firstWhereOrNull((item) => item.productId == productId);
+    cartItems.removeWhere((item) => item.productId == productId);
+    
+    if (removedItem != null) {
+      Get.snackbar(
+        'Produit retiré',
+        removedItem.productName,
+        duration: Duration(seconds: 1),
+      );
     }
   }
   
@@ -337,29 +315,48 @@ void addToCart(Product product, {int quantity = 1}) {
   
 /// ✅ VALIDER COMMANDE - AVEC CHECKOUT AUTOMATIQUE
 Future<void> validateOrder({String saleType = 'ORDER'}) async {
+  if (!_canValidateOrder()) {
+    return;
+  }
+  
+  // Validation spécifique pour les retours
+  final isReturn = saleType == 'RETURN_CONFORME' || saleType == 'RETURN_NON_CONFORME';
+  if (isReturn && cartItems.isEmpty) {
+    Get.snackbar(
+      'Erreur',
+      'Impossible de créer un retour: le panier est vide',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+    );
+    return;
+  }
+  
+  // Dialogue de validation avec commentaire
+  final validationResult = await _showValidationDialogWithComment(saleType: saleType);
+  if (validationResult == null || !validationResult['confirmed']) {
+    return;
+  }
+  
+  final String? orderComment = validationResult['comment'];
+  
+  isValidatingOrder.value = true;
+  
   try {
-
-    if (!_canValidateOrder()) {
-      return;
+    // Récupérer la géolocalisation avec gestion d'erreur plateforme
+    double? latitude;
+    double? longitude;
+    
+    try {
+      final locationService = Get.find<LocationService>();
+      final position = await locationService.getCurrentPosition();
+      latitude = position?.latitude;
+      longitude = position?.longitude;
+    } catch (e) {
+      // Continue without GPS coordinates for unsupported platforms
+      latitude = null;
+      longitude = null;
     }
-    
-    // Dialogue de validation avec commentaire
-    final validationResult = await _showValidationDialogWithComment(saleType: saleType);
-    if (validationResult == null || !validationResult['confirmed']) {
-      return;
-    }
-    
-    final String? orderComment = validationResult['comment'];
-    
-    isValidatingOrder.value = true;
-
-    // Récupérer la géolocalisation
-
-    final locationService = Get.find<LocationService>();
-    final position = await locationService.getCurrentPosition();
-
-    double? latitude = position?.latitude;
-    double? longitude = position?.longitude;
 
     // Créer la commande finale avec le commentaire
     final finalOrder = currentOrder.value!.copyWith(
@@ -371,7 +368,6 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
       longitude: longitude,
     );
     
-
     // Construire SaleRequest pour la façade /api/sales
     final user = _authController.user.value;
     if (user == null) {
@@ -408,7 +404,7 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
       // Condition de retour globale (pour les retours)
       returnCondition: returnCondition,
     );
-
+    
     // 1. APPEL FAÇADE SALES
     final SaleResponse saleResponse = await _salesService.createSale(saleRequest);
 
@@ -469,28 +465,9 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     final tourneeController = Get.find<TourneeController>();
     await tourneeController.refresh();
     
-
-  } catch (e) {
-
-  // Le service gère déjà l'extraction du message serveur
-  final errorMessage = e.toString().replaceAll('Exception: ', '');
-  
-  Get.snackbar(
-    'Erreur de validation',
-    errorMessage,
-    backgroundColor: Colors.red.shade600,
-    colorText: Colors.white,
-    icon: Icon(Icons.error_outline, color: Colors.white),
-    duration: Duration(seconds: 5),
-    snackPosition: SnackPosition.TOP,
-    margin: EdgeInsets.all(16),
-    borderRadius: 8,
-  );
-  
-} finally {
-  isValidatingOrder.value = false;
-}
-
+  } finally {
+    isValidatingOrder.value = false;
+  }
 }
 
 /// 💬 DIALOGUE VALIDATION AVEC COMMENTAIRE
@@ -673,25 +650,27 @@ void clearCart() {
   Future<void> loadSalesHistory() async {
     try {
       isLoadingHistory.value = true;
-
+      
       final user = _authController.user.value;
       if (user == null) {
         throw Exception('Utilisateur non connecté');
       }
 
       final history = await _salesService.getUserHistory(user.id);
-
       salesHistory.value = history;
-
+      
     } catch (e) {
+
       Get.snackbar(
         'Erreur',
-        'Impossible de charger l\'historique des ventes',
-        backgroundColor: Get.theme.colorScheme.error,
-        colorText: Get.theme.colorScheme.onError,
+        'Impossible de charger l\'historique: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
       );
     } finally {
       isLoadingHistory.value = false;
+      print('OrderController: Sales history loading state set to false');
     }
   }
   

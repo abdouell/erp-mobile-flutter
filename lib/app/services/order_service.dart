@@ -16,8 +16,6 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
         orderData['clientTourneeId'] = clientTourneeId;
       }
       
-      print('📤 Données envoyées: $orderData');
-      
       final response = await _apiService.dio.post('/api/order', data: orderData);
       
 
@@ -29,7 +27,6 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
           final savedOrder = Order.fromJson(response.data);
           return savedOrder;
         } catch (parseError) {
-          print('❌ Erreur parsing JSON: $parseError');
           throw Exception('Impossible de parser la réponse du serveur: $parseError');
         }
       } else {
@@ -37,8 +34,6 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
       }
       
     } on DioException catch (e) {
-    print('❌ Erreur Dio sauvegarde commande: ${e.response?.statusCode}');
-    print('Response data: ${e.response?.data}');
     
     // ✅ Extraire le message du serveur s'il existe
     String serverMessage = 'Erreur inconnue';
@@ -80,7 +75,6 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
       return Order.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('❌ Erreur récupération commande $orderId: ${e.response?.statusCode}');
       
       if (e.response?.statusCode == 404) {
         throw Exception('Commande #$orderId introuvable');
@@ -90,7 +84,6 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
         throw Exception('Erreur serveur lors de la récupération de la commande');
       }
     } catch (e) {
-      print('❌ Erreur générale commande $orderId: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -110,10 +103,8 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
       return orders;
       
     } on DioException catch (e) {
-      print('❌ Erreur commandes utilisateur $userId: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération des commandes');
     } catch (e) {
-      print('❌ Erreur générale commandes user: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -128,7 +119,6 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
       return itemsJson.map((json) => OrderItem.fromJson(json)).toList();
       
     } on DioException catch (e) {
-      print('❌ Erreur détails commande $orderId: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération des détails');
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
@@ -138,16 +128,13 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
   /// Récupérer commandes par statut
   Future<List<Order>> getOrdersByStatus(OrderStatus status) async {
     try {
-      print('📊 Récupération commandes statut: ${status.name}');
       
       final response = await _apiService.dio.get('/api/order/statut/${status.name}');
-      print('✅ Commandes trouvées: ${response.data?.length ?? 0}');
       
       final List<dynamic> ordersJson = response.data ?? [];
       return ordersJson.map((json) => Order.fromJson(json)).toList();
       
     } on DioException catch (e) {
-      print('❌ Erreur commandes par statut: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération des commandes');
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
@@ -157,18 +144,15 @@ Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
   /// Télécharger le PDF d'une commande
   Future<List<int>> downloadOrderPdf(int orderId) async {
     try {
-      print('📄 Téléchargement PDF commande: $orderId');
       
       final response = await _apiService.dio.get(
         '/api/order/$orderId/pdf',
         options: Options(responseType: ResponseType.bytes),
       );
       
-      print('✅ PDF téléchargé: ${response.data.length} bytes');
       return response.data;
       
     } on DioException catch (e) {
-      print('❌ Erreur téléchargement PDF: ${e.response?.statusCode}');
       throw Exception('Erreur lors du téléchargement du PDF');
     } catch (e) {
       throw Exception('Erreur inattendue: $e');

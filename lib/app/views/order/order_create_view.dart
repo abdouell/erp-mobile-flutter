@@ -64,7 +64,6 @@ class OrderCreateView extends GetView<OrderController> {
     // Initialiser la commande une seule fois
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!Get.isRegistered<OrderController>()) {
-        print('❌ OrderController non trouvé !');
         return;
       }
       
@@ -73,7 +72,6 @@ class OrderCreateView extends GetView<OrderController> {
         controller.setSaleType(initialSaleType);
         controller.initializeOrder(client);
       } catch (e) {
-        print('❌ Erreur initialisation commande: $e');
         Get.snackbar(
           'Erreur',
           'Impossible d'"'"'initialiser la commande: $e',

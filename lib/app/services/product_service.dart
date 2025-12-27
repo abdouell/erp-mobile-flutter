@@ -26,12 +26,9 @@ class ProductService extends GetxService {
       // Mise en cache
       _cachedProducts = products;
       
-      print('📝 Produits parsés: ${products.length}');
       return products;
       
     } on DioException catch (e) {
-      print('❌ Erreur Dio récupération produits: ${e.response?.statusCode}');
-      print('Response data: ${e.response?.data}');
       
       if (e.response?.statusCode == 403) {
         throw Exception('Accès refusé : permissions insuffisantes pour voir les produits');
@@ -41,7 +38,6 @@ class ProductService extends GetxService {
         throw Exception('Erreur serveur lors de la récupération des produits');
       }
     } catch (e) {
-      print('❌ Erreur générale produits: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -61,7 +57,6 @@ class ProductService extends GetxService {
       return categories;
       
     } catch (e) {
-      print('❌ Erreur récupération catégories: $e');
       throw Exception('Erreur lors de la récupération des catégories');
     }
   }
@@ -76,29 +71,18 @@ class ProductService extends GetxService {
 /// Utilisé pour les vendeurs conventionnels
 Future<List<Product>> getProductsByEmplacement(String emplacementCode, {int? customerId}) async {
   try {
-    print('=== RÉCUPÉRATION PRODUITS EMPLACEMENT ===');
-    print('Emplacement: $emplacementCode');
-    print('Customer ID: $customerId');
 
     final response = await _apiService.dio.get(
       '/api/product/emplacement/$emplacementCode/stock',
       queryParameters: customerId != null ? {'customerId': customerId} : null,
     );
-    
-    print('✅ Réponse API: ${response.data?.length ?? 0} produits');
 
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();
     
-    // Compter combien ont des prix spéciaux
-    final withDiscount = products.where((p) => p.hasDiscount).length;
-    print('💰 Produits avec remise: $withDiscount');
-    
     return products;
     
   } on DioException catch (e) {
-    print('❌ Erreur Dio récupération produits emplacement: ${e.response?.statusCode}');
-    print('Response data: ${e.response?.data}');
     
     if (e.response?.statusCode == 403) {
       throw Exception('Accès refusé : permissions insuffisantes');
@@ -108,7 +92,6 @@ Future<List<Product>> getProductsByEmplacement(String emplacementCode, {int? cus
       throw Exception('Erreur serveur lors de la récupération des produits');
     }
   } catch (e) {
-    print('❌ Erreur générale produits emplacement: $e');
     throw Exception('Erreur inattendue: $e');
   }
 }
@@ -117,26 +100,15 @@ Future<List<Product>> getProductsByEmplacement(String emplacementCode, {int? cus
 /// Affiche prix catalogue + prix client + % remise
 Future<List<Product>> getProductsForCustomer(int customerId) async {
   try {
-    print('=== RÉCUPÉRATION PRODUITS AVEC TARIFICATION CLIENT ===');
-    print('Customer ID: $customerId');
     
     final response = await _apiService.dio.get('/api/product/customer/$customerId/pricing');
-    print('✅ Réponse API: ${response.data?.length ?? 0} produits avec tarification');
     
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();
     
-    print('📦 Produits parsés avec tarification: ${products.length}');
-    
-    // Compter combien ont des prix spéciaux
-    final withDiscount = products.where((p) => p.hasDiscount).length;
-    print('💰 Produits avec remise: $withDiscount');
-    
     return products;
     
   } on DioException catch (e) {
-    print('❌ Erreur Dio récupération produits client: ${e.response?.statusCode}');
-    print('Response data: ${e.response?.data}');
     
     if (e.response?.statusCode == 403) {
       throw Exception('Accès refusé : permissions insuffisantes pour voir les produits');
@@ -146,7 +118,6 @@ Future<List<Product>> getProductsForCustomer(int customerId) async {
       throw Exception('Erreur serveur lors de la récupération des produits');
     }
   } catch (e) {
-    print('❌ Erreur générale produits client: $e');
     throw Exception('Erreur inattendue: $e');
   }
 }

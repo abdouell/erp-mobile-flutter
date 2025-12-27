@@ -12,14 +12,12 @@ class CustomerService extends GetxService {
   /// 👤 RÉCUPÉRER UN CLIENT PAR ID - MÉTHODE CORRIGÉE
   Future<Customer> getCustomerById(int customerId) async {
     try {
-      print('👤 Récupération client ID: $customerId');
       
       final response = await _apiService.dio.get('/api/customers/$customerId');
 
       return Customer.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('❌ Erreur récupération client $customerId: ${e.response?.statusCode}');
       
       if (e.response?.statusCode == 404) {
         throw Exception('Client #$customerId introuvable');
@@ -29,12 +27,11 @@ class CustomerService extends GetxService {
         throw Exception('Erreur serveur lors de la récupération du client');
       }
     } catch (e) {
-      print('❌ Erreur générale client $customerId: $e');
-      throw Exception('Erreur inattendue: $e');
+      throw Exception('Erreur réseau: Impossible de contacter le serveur');
     }
   }
 
-  /// 👥 RÉCUPÉRER TOUS LES CLIENTS
+  /// RÉCUPÉRER TOUS LES CLIENTS
   Future<List<Customer>> getAllCustomers() async {
     try {
       final response = await _apiService.dio.get('/api/customers');
@@ -42,10 +39,8 @@ class CustomerService extends GetxService {
       return customersJson.map((json) => Customer.fromJson(json)).toList();
       
     } on DioException catch (e) {
-      print('❌ Erreur récupération clients: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération des clients');
     } catch (e) {
-      print('❌ Erreur générale clients: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -63,7 +58,6 @@ class CustomerService extends GetxService {
       return customers;
       
     } on DioException catch (e) {
-      print('❌ Erreur recherche clients: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la recherche de clients');
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
@@ -82,7 +76,6 @@ class CustomerService extends GetxService {
       return customers;
       
     } on DioException catch (e) {
-      print('❌ Erreur clients tournée: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération des clients de la tournée');
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
@@ -103,10 +96,8 @@ Future<List<Order>> getCustomerOrders(int customerId) async {
     return orders;
     
   } on DioException catch (e) {
-    print('❌ Erreur commandes client $customerId: ${e.response?.statusCode}');
     throw Exception('Erreur lors de la récupération des commandes du client');
   } catch (e) {
-    print('❌ Erreur générale commandes client: $e');
     throw Exception('Erreur inattendue: $e');
   }
 }

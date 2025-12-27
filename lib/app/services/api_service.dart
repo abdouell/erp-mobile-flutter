@@ -22,10 +22,6 @@ void onInit() {
     'Accept': 'application/json, text/plain', // Accept both JSON and plain text
   };
   
-  print('=== MAIN API SERVICE CONFIG ===');
-  print('Response Type: ${_dio.options.responseType}');
-  print('Base URL: ${_dio.options.baseUrl}');
-  
   // ✅ AJOUTEZ ICI l'intercepteur JWT
   _dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) {
@@ -35,21 +31,15 @@ void onInit() {
       
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
-      } else {
-        print('❌ Pas de token JWT trouvé dans le storage !');
       }
       
       handler.next(options);
     },
     onError: (error, handler) {
-      print('=== RESPONSE ERROR ===');
-      print('Status: ${error.response?.statusCode}');
-      print('Data: ${error.response?.data}');
+      // Handle API errors
       handler.next(error);
     },
   ));
-  
-  print('ApiService initialized with base URL: ${ApiConstants.BASE_URL}');
 }
   
  Future<LoginResponse> login(String username, String password) async {
@@ -88,10 +78,7 @@ void onInit() {
     }
 
   } on DioException catch (e) {
-    print('=== LOGIN ERROR DEBUG ===');
-    print('Status Code: ${e.response?.statusCode}');
-    print('Response Data: ${e.response?.data}');
-    print('Error Type: ${e.type}');
+    // Handle login errors
     
     // Handle plain text error responses from backend
     if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
@@ -103,7 +90,6 @@ void onInit() {
       throw 'Erreur de connexion: Impossible de contacter le serveur';
     }
   } catch (e) {
-    print('Unexpected error: $e');
     rethrow;
   }
 }

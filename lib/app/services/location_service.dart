@@ -28,7 +28,6 @@ class LocationService extends GetxService {
         
         // Use if recent (within 5 minutes)
         if (cacheAge.inMinutes < 5) {
-          print('📍 GPS: Using cached position (${cacheAge.inMinutes}m old)');
           return lastKnownPosition;
         }
       }
@@ -37,7 +36,6 @@ class LocationService extends GetxService {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (lastKnownPosition != null) {
-          print('📍 GPS: Service disabled, using cached position');
           return lastKnownPosition;
         }
         throw Exception('Service de géolocalisation désactivé');
@@ -46,7 +44,6 @@ class LocationService extends GetxService {
       if (!await hasPermission()) {
         if (!await requestPermission()) {
           if (lastKnownPosition != null) {
-            print('📍 GPS: Permission denied, using cached position');
             return lastKnownPosition;
           }
           throw Exception('Permission géolocalisation refusée');
@@ -59,11 +56,9 @@ class LocationService extends GetxService {
         timeLimit: Duration(seconds: 20),
       );
       
-      print('📍 GPS: Fresh position acquired (accuracy: ${position.accuracy}m)');
       return position;
       
     } catch (e) {
-      print('📍 GPS Error: $e');
       
       // Fallback to last known position on timeout
       if (e.toString().contains('timeout')) {
@@ -71,11 +66,9 @@ class LocationService extends GetxService {
           final fallbackPosition = await Geolocator.getLastKnownPosition();
           if (fallbackPosition != null) {
             final cacheAge = DateTime.now().difference(fallbackPosition.timestamp);
-            print('📍 GPS: Using cached position after timeout (${cacheAge.inMinutes}m old)');
             return fallbackPosition;
           }
         } catch (fallbackError) {
-          print('📍 GPS: Fallback failed: $fallbackError');
         }
       }
       

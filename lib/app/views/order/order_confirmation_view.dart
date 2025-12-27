@@ -630,7 +630,6 @@ class OrderConfirmationView extends StatelessWidget {
   /// 📄 TÉLÉCHARGER PDF (ORDER ou BL via SalesController)
   void _downloadPdf(Order order, SaleResponse? sale) async {
     try {
-      print('▶️ _downloadPdf called - orderId: ${order.id}, sale: ${sale != null ? '${sale.documentType}#${sale.documentId}' : 'null'}');
       // Afficher loading
       Get.dialog(
         AlertDialog(
@@ -656,8 +655,6 @@ class OrderConfirmationView extends StatelessWidget {
         type = 'ORDER';
         id = order.id ?? 0;
       }
-
-      print('📄 Preparing download - type=$type, id=$id');
 
       if (id == 0) {
         throw Exception('Identifiant de document invalide');

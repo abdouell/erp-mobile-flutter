@@ -32,23 +32,6 @@ class ClientDetailView extends GetView<TourneeController> {
         final client = controller.tourneeToday.value?.clients
             .firstWhereOrNull((c) => c.id == clientTourneeId);
 
-        // 🔍 DEBUG : Logs détaillés
-        print('🔍 DEBUG CLIENT DETAIL VIEW:');
-        print('  clientTourneeId cherché: $clientTourneeId');
-        print('  tourneeToday existe: ${controller.tourneeToday.value != null}');
-        if (controller.tourneeToday.value != null) {
-          print('  Nombre de clients dans tournée: ${controller.tourneeToday.value!.clients.length}');
-          for (var c in controller.tourneeToday.value!.clients) {
-            print('    - Client ID=${c.id}, visites=${c.visites.length}');
-          }
-        }
-        print('  Client trouvé: ${client != null}');
-        if (client != null) {
-          print('  Client name: ${client.customerName}');
-          print('  Nombre de visites: ${client.visites.length}');
-          print('  Statut visite: ${client.statutVisite}');
-        }
-
         // ✅ Si client pas encore chargé → afficher loader
         if (client == null) {
           return Center(

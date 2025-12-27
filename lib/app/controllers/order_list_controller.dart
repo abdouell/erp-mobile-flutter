@@ -49,14 +49,10 @@ class OrdersListController extends GetxController {
       isLoading.value = true;
       hasError.value = false;
       
-      print('=== CHARGEMENT COMMANDES ===');
-      
       final user = _authController.user.value;
       if (user == null) {
         throw Exception('Utilisateur non connecté');
       }
-      
-      print('Chargement commandes pour user: ${user.id}');
       
       final orders = await _orderService.getUserOrders(user.id);
       
@@ -64,10 +60,7 @@ class OrdersListController extends GetxController {
       _applyFilters();
       _updateStatistics();
       
-      print('✅ ${orders.length} commandes chargées');
-      
     } catch (e) {
-      print('❌ Erreur chargement commandes: $e');
       hasError.value = true;
       errorMessage.value = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -77,7 +70,6 @@ class OrdersListController extends GetxController {
   
   /// 🔍 RECHERCHE ET FILTRES
   void _performSearch(String query) {
-    print('🔍 Recherche: "$query"');
     _applyFilters();
   }
   
@@ -113,7 +105,6 @@ class OrdersListController extends GetxController {
     }
     
     filteredOrders.value = filtered;
-    print('📝 ${filtered.length} commandes après filtres');
   }
   
   /// 📊 CALCUL STATISTIQUES
@@ -124,8 +115,6 @@ class OrdersListController extends GetxController {
     draftCount.value = allOrders.where((o) => o.isDraft).length;
     validatedCount.value = allOrders.where((o) => o.isValidated).length;
     // ✅ MVP: Pas de cancelled count
-    
-    print('📊 Stats: ${totalOrders.value} commandes, ${totalAmount.value}€ total');
   }
   
   /// 🔄 RAFRAÎCHIR
@@ -154,10 +143,6 @@ class OrdersListController extends GetxController {
   
   /// 📄 NAVIGATION VERS DÉTAILS - VERSION MVP SIMPLE
   void goToOrderDetails(Order order) {
-    print('=== NAVIGATION VERS DÉTAILS ===');
-    print('Commande: $order');
-    print('ID: ${order.id}');
-    
     // ✅ SIMPLE: Navigation avec ID dans l'URL
     if (order.id != null) {
       Get.toNamed('/order-details/${order.id}');

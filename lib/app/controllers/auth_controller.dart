@@ -38,7 +38,6 @@ class AuthController extends GetxController {
         user.value = User.fromJson(userData);
         isAuthenticated.value = true;
       } catch (e) {
-        print('Erreur chargement utilisateur sauvé: $e');
         _clearAuth();
       }
     }
@@ -77,8 +76,6 @@ class AuthController extends GetxController {
     Get.offAllNamed('/tournee');
     
   } catch (e) {
-    print('Erreur: $e');
-    
     // ✅ Affichage direct du message d'erreur
     Get.snackbar(
       'Erreur de connexion',

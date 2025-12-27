@@ -37,14 +37,12 @@ class OrderDetailsController extends GetxController {
       final Map args = Get.arguments as Map;
       if (args.containsKey('documentType')) {
         documentType = args['documentType'].toString();
-        print('✅ Type de document depuis arguments: $documentType');
       }
     }
     
     // 1. Essayer paramètres d'URL (si route configurée)
     if (Get.parameters.containsKey('id')) {
       orderIdStr = Get.parameters['id'];
-      print('✅ ID depuis paramètres URL: $orderIdStr');
     }
     // 2. Essayer arguments (navigation classique)
     else if (Get.arguments != null) {
@@ -52,11 +50,9 @@ class OrderDetailsController extends GetxController {
         final Map args = Get.arguments as Map;
         if (args.containsKey('orderId')) {
           orderIdStr = args['orderId'].toString();
-          print('✅ ID depuis arguments Map: $orderIdStr');
         }
       } else if (Get.arguments is String || Get.arguments is int) {
         orderIdStr = Get.arguments.toString();
-        print('✅ ID depuis arguments direct: $orderIdStr');
       }
     }
     // 3. Essayer d'extraire depuis l'URL manuellement
@@ -66,23 +62,17 @@ class OrderDetailsController extends GetxController {
       final match = regExp.firstMatch(currentRoute);
       if (match != null) {
         orderIdStr = match.group(1);
-        print('✅ ID extrait de l\'URL: $orderIdStr');
       }
     }
-    
-    print('🎯 ID final retenu: $orderIdStr, Type: $documentType');
     
     if (orderIdStr != null) {
       final int? docId = int.tryParse(orderIdStr);
       if (docId != null) {
-        print('✅ Conversion réussie vers int: $docId');
         loadDocumentDetails(docId, documentType);
       } else {
-        print('❌ Impossible de convertir "$orderIdStr" en int');
         _setError('ID de document invalide: $orderIdStr');
       }
     } else {
-      print('❌ Aucun ID trouvé nulle part');
       _setError('ID de document manquant - URL: ${Get.currentRoute}');
     }
   }
@@ -93,8 +83,6 @@ class OrderDetailsController extends GetxController {
       isLoading.value = true;
       hasError.value = false;
       
-      print('🔄 Chargement document $documentType #$docId...');
-      
       // Appeler l'API unifiée via SalesService
       final loadedOrder = await _salesService.getDocumentDetails(
         type: documentType,
@@ -104,16 +92,12 @@ class OrderDetailsController extends GetxController {
       order.value = loadedOrder;
       orderItems.value = loadedOrder.orderDetails;
       
-      print('✅ Document chargé: $loadedOrder');
-      print('✅ ${loadedOrder.orderDetails.length} articles');
-      
       // Charger les infos client en parallèle (non bloquant)
       if (loadedOrder.customerId > 0) {
         _loadCustomerInfo(loadedOrder.customerId);
       }
       
     } catch (e) {
-      print('❌ Erreur chargement document $docId: $e');
       _setError('Impossible de charger le document: $e');
     } finally {
       isLoading.value = false;
@@ -128,12 +112,9 @@ class OrderDetailsController extends GetxController {
   /// 👤 CHARGER INFO CLIENT (non bloquant)
   Future<void> _loadCustomerInfo(int customerId) async {
     try {
-      print('👤 Chargement client $customerId...');
       final customer = await _customerService.getCustomerById(customerId); // ✅ Méthode corrigée
       customerInfo.value = customer;
-      print('✅ Client chargé: ${customer.displayName}');
     } catch (e) {
-      print('⚠️ Erreur chargement client $customerId: $e');
       // Pas grave, on continue sans les détails client
     }
   }
@@ -143,7 +124,6 @@ class OrderDetailsController extends GetxController {
     hasError.value = true;
     errorMessage.value = message;
     isLoading.value = false;
-    print('❌ Erreur définie: $message');
   }
   
   /// 🔄 RAFRAÎCHIR LES DÉTAILS
@@ -151,8 +131,6 @@ class OrderDetailsController extends GetxController {
     final currentOrder = order.value;
     if (currentOrder?.id != null) {
       await loadOrderDetails(currentOrder!.id!);
-    } else {
-      print('❌ Pas de commande à rafraîchir');
     }
   }
   

@@ -498,19 +498,10 @@ void _handleCheckin(ClientTournee client) async {
     
     Get.back(); // Fermer le dialog
     
-    
-    // 🔍 DEBUG : État juste avant navigation
-    print('🔍 DEBUG AVANT NAVIGATION:');
-    print('  client.id à passer: ${client.id}');
     final tournee = controller.tourneeToday.value;
     if (tournee != null) {
       final clientInTournee = tournee.clients.firstWhereOrNull((c) => c.id == client.id);
-      if (clientInTournee != null) {
-        print('  Client dans tournée: OUI');
-        print('  Visites du client: ${clientInTournee.visites.length}');
-      } else {
-        print('  Client dans tournée: NON TROUVÉ');
-      }
+      // Client visit verification logic without debug logs
     }
     // ✅ CHANGEMENT : Naviguer avec SEULEMENT l'ID
     // La page détail va récupérer le client à jour depuis le controller

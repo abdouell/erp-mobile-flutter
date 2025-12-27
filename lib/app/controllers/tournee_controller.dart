@@ -27,7 +27,6 @@ class TourneeController extends GetxController {
     // ✅ Attendre que l'utilisateur soit authentifié
     ever(_authController.isAuthenticated, (authenticated) {
       if (authenticated) {
-        print('🔑 Utilisateur authentifié détecté, chargement tournée...');
         loadTourneeData();
       }
     });
@@ -35,7 +34,6 @@ class TourneeController extends GetxController {
     // ✅ Si déjà authentifié au démarrage
     if (_authController.isAuthenticated.value) {
       Future.delayed(Duration(milliseconds: 300), () {
-        print('🔑 Déjà authentifié, chargement tournée...');
         loadTourneeData();
       });
     }
@@ -51,71 +49,29 @@ class TourneeController extends GetxController {
       isLoading.value = true;
       hasError.value = false;
       
-      print('=== CHARGEMENT TOURNEE DATA ===');
-      
       // 1. Récupérer user connecté
       final User? currentUser = _authController.user.value;
       if (currentUser == null) {
         throw Exception('Utilisateur non connecté');
       }
       
-      print('User connecté: ${currentUser.id}');
-      
       // 2. Récupérer vendeur par userId
       final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(currentUser.id);
       vendeur.value = vendeurData;
-      
-      print('Vendeur trouvé: ${vendeurData.nomComplet}');
       
       // 3. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = null; // Force un changement
       tourneeToday.value = tournee; // Réassignation
-      
-      if (tournee != null) {
-        final statut = tournee.affectationStatut ?? 'PLANIFIEE';
-        print('Tournée du jour: ${tournee.id} - $statut');
-        print('  → ${tournee.nombreClients} clients');
-        print('  → ${tournee.nombreTotalVisites} visites');
-        print('  tourneeToday → ${tourneeToday.value?.nombreTotalVisites} visites');
-        print('  → ${tournee.nombreCommandes} commandes');
-
-                for (var client in tournee.clients) {
-          print('  ┌─ Client ID=${client.id} - ${client.customerName}');
-          print('  │  Statut: ${client.statutVisite}');
-          print('  │  Nombre de visites: ${client.visites.length}');
-          
-          if (client.visites.isNotEmpty) {
-            for (var i = 0; i < client.visites.length; i++) {
-              final visite = client.visites[i];
-              print('  │  ├─ Visite ${i + 1}:');
-              print('  │  │  id: ${visite.id}');
-              print('  │  │  statut: ${visite.statutVisite}');
-              print('  │  │  checkin: ${visite.checkinAt}');
-              print('  │  │  checkout: ${visite.checkoutAt}');
-            }
-          } else {
-            print('  │  └─ Aucune visite');
-          }
-          print('  └─');
-        }
-
-      } else {
-        print('Pas de tournée aujourd\'hui');
-      }
-
-        print('=== FINCHARGEMENT TOURNEE DATA ===');
-      
     } catch (e) {
-      print('Erreur chargement tournée: $e');
       hasError.value = true;
       errorMessage.value = e.toString().replaceAll('Exception: ', '');
-      
+
     } finally {
       isLoading.value = false;
     }
   }
-  
+
   /// Rafraîchir les données
   Future<void> refresh() async {
     await loadTourneeData();
@@ -128,8 +84,7 @@ class TourneeController extends GetxController {
   /// Naviguer vers la liste des clients
   void goToClients() {
     if (tourneeToday.value != null) {
-      print('Navigation vers clients de la tournée: ${tourneeToday.value!.id}');
-      
+
       // ✅ Navigation avec données de la tournée
       Get.toNamed('/clients', arguments: {
         'tournee': tourneeToday.value,
@@ -149,17 +104,9 @@ class TourneeController extends GetxController {
   /// Retourne le visiteId créé via VisitStatusResponse
   Future<void> checkinClient(int clientTourneeId) async {
     try {
-      print('📍 Check-in client $clientTourneeId');
-      
       // Récupérer position GPS
       final locationService = Get.find<LocationService>();
       final position = await locationService.getCurrentPosition();
-      
-      if (position != null) {
-        print('📍 GPS: Check-in successful (accuracy: ${position.accuracy}m)');
-      } else {
-        print('📍 GPS: Check-in failed, using null position');
-      }
       
       // Appel API - crée une nouvelle visite et fait le check-in
       final response = await _tourneeService.checkinCustomer(
@@ -169,13 +116,10 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print('📍 Check-in completed, visiteId: ${response.visiteId}');
-      
       // Recharger automatiquement la tournée pour avoir les données à jour
       await refresh();
       
     } catch (e) {
-      print('📍 Check-in failed: $e');
       rethrow;
     }
   }
@@ -184,17 +128,9 @@ class TourneeController extends GetxController {
   /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
   Future<void> checkoutWithOrder(int visiteId) async {
     try {
-      print('📍 Checkout with order visite $visiteId');
-      
       // Récupérer position GPS
       final locationService = Get.find<LocationService>();
       final position = await locationService.getCurrentPosition();
-      
-      if (position != null) {
-        print('📍 GPS: Checkout successful (accuracy: ${position.accuracy}m)');
-      } else {
-        print('📍 GPS: Checkout failed, using null position');
-      }
       
       // Appel API
       await _tourneeService.checkoutVisiteWithOrder(
@@ -203,13 +139,11 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print('📍 Checkout with order completed');
-      
+
       // Recharger automatiquement la tournée
       await refresh();
       
     } catch (e) {
-      print('📍 Checkout with order failed: $e');
       rethrow;
     }
   }
@@ -222,17 +156,10 @@ class TourneeController extends GetxController {
     String? note,
   ) async {
     try {
-      print('📍 Checkout without order visite $visiteId - Motif: $motif');
-      
+
       // Récupérer position GPS
       final locationService = Get.find<LocationService>();
       final position = await locationService.getCurrentPosition();
-      
-      if (position != null) {
-        print('📍 GPS: Checkout successful (accuracy: ${position.accuracy}m)');
-      } else {
-        print('📍 GPS: Checkout failed, using null position');
-      }
       
       // Appel API
       await _tourneeService.checkoutVisiteWithoutOrder(
@@ -243,13 +170,11 @@ class TourneeController extends GetxController {
         longitude: position?.longitude,
       );
       
-      print('📍 Checkout without order completed');
-      
+
       // Recharger automatiquement la tournée
       await refresh();
       
     } catch (e) {
-      print('📍 Checkout without order failed: $e');
       rethrow;
     }
   }
@@ -257,7 +182,6 @@ class TourneeController extends GetxController {
   /// Clôturer la tournée
   Future<void> cloturerTournee(int tourneeId) async {
     try {
-      print('🔒 Clôture tournée $tourneeId');
       if (vendeur.value == null) {
         throw Exception('Vendeur introuvable dans le contexte');
       }
@@ -266,13 +190,10 @@ class TourneeController extends GetxController {
       // Appel API
       await _tourneeService.clotureTournee(tourneeId, vendeurId);
       
-      print('✅ Tournée clôturée avec succès');
-      
       // Recharger automatiquement la tournée
       await refresh();
       
     } catch (e) {
-      print('❌ Erreur clôture tournée: $e');
       rethrow;
     }
   }

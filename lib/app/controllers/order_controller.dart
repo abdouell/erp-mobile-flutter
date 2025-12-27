@@ -137,9 +137,7 @@ Future<void> _loadProducts() async {
       throw Exception('Informations vendeur non disponibles');
     }
     
-    print('👤 Vendeur récupéré: ${vendeur.nomComplet} - Type: ${vendeur.typeVendeur} - Emplacement: ${vendeur.emplacementCode}');
     final String saleType = currentSaleType.value;
-    print('🧾 Scénario courant (saleType): $saleType');
     
     List<Product> products;
     
@@ -149,7 +147,6 @@ Future<void> _loadProducts() async {
     
     if (saleType == 'BL' && vendeur.hasEmplacement && !isReturn) {
       // Scénario BL → Produits en stock sur l'emplacement du vendeur + tarification client EN UN SEUL APPEL
-      print('🚚 Scénario BL - Chargement stock emplacement ${vendeur.emplacementCode} avec pricing client');
       
       // ✅ UN SEUL APPEL : stock + pricing client avec vérification de période PriceList
       products = await _productService.getProductsByEmplacement(
@@ -157,13 +154,9 @@ Future<void> _loadProducts() async {
         customerId: customerId,
       );
       
-      print('✅ ${products.length} produits en stock avec tarification client (scénario BL)');
-      
     } else {
       // Scénario COMMANDE (ORDER) ou BL sans emplacement → tous les produits client, sans filtrage par type vendeur
-      print('📋 Scénario $saleType - Chargement de tous les produits avec tarification client');
       products = await _productService.getProductsForCustomer(customerId);
-      print('✅ ${products.length} produits chargés avec tarification client');
     }
     
     allProducts.value = products;
@@ -171,11 +164,8 @@ Future<void> _loadProducts() async {
     
     // Compter les produits avec remise
     final withDiscount = products.where((p) => p.hasDiscount).length;
-    print('💰 Produits avec remise client: $withDiscount');
-    print('✅ Produits chargés avec succès');
     
   } catch (e) {
-    print('❌ Erreur chargement produits: $e');
     _handleError('Erreur chargement produits', e);
   } finally {
     isLoadingProducts.value = false;
@@ -185,7 +175,6 @@ Future<void> _loadProducts() async {
 /// 📂 CHARGER CATÉGORIES - À PARTIR DES PRODUITS FILTRÉS
 Future<void> _loadCategories() async {
   try {
-    print('📂 Extraction des catégories des produits chargés...');
     
     // ✅ Extraire les catégories UNIQUEMENT des produits filtrés (allProducts)
     final categorySet = allProducts
@@ -197,10 +186,8 @@ Future<void> _loadCategories() async {
     
     categories.value = categoryList;
     
-    print('✅ ${categoryList.length} catégories extraites des ${allProducts.length} produits');
-    
+
   } catch (e) {
-    print('⚠️ Erreur extraction catégories: $e');
     // Non bloquant, on continue sans catégories
     categories.value = [];
   }
@@ -208,8 +195,7 @@ Future<void> _loadCategories() async {
   
   /// 🔍 RECHERCHE PRODUITS
   void _performSearch(String query) {
-    print('🔍 Recherche: "$query"');
-    
+
     if (query.isEmpty && selectedCategory.value == null) {
       // Aucun filtre -> tous les produits
       filteredProducts.value = allProducts;
@@ -225,20 +211,17 @@ Future<void> _loadCategories() async {
       filteredProducts.value = filtered;
     }
     
-    print('📝 Résultats filtrés: ${filteredProducts.length}');
   }
   
   /// 📂 FILTRER PAR CATÉGORIE
   void _filterByCategory(String? category) {
-    print('📂 Filtre catégorie: $category');
     _performSearch(searchQuery.value); // Re-appliquer la recherche avec le nouveau filtre
   }
   
 /// 🛒 AJOUTER AU PANIER - AVEC VALIDATION STOCK
 void addToCart(Product product, {int quantity = 1}) {
   try {
-    print('🛒 Ajout panier: ${product.displayName} x$quantity');
-    
+
     if (!product.isAvailable) {
       Get.snackbar('Produit indisponible', '${product.displayName} n\'est pas disponible');
       return;
@@ -301,8 +284,7 @@ void addToCart(Product product, {int quantity = 1}) {
       );
     }
     
-    print('✅ Panier: ${cartItems.length} articles, total: ${cartTotal.value}€');
-    
+
   } catch (e) {
     _handleError('Erreur ajout panier', e);
   }
@@ -319,7 +301,6 @@ void addToCart(Product product, {int quantity = 1}) {
       final index = cartItems.indexWhere((item) => item.productId == productId);
       if (index >= 0) {
         cartItems[index] = cartItems[index].updateQuantity(newQuantity);
-        print('✅ Quantité mise à jour: produit $productId → $newQuantity');
       }
       
     } catch (e) {
@@ -339,7 +320,6 @@ void addToCart(Product product, {int quantity = 1}) {
           removedItem.productName,
           duration: Duration(seconds: 1),
         );
-        print('✅ Produit retiré: ${removedItem.productName}');
       }
       
     } catch (e) {
@@ -358,40 +338,28 @@ void addToCart(Product product, {int quantity = 1}) {
 /// ✅ VALIDER COMMANDE - AVEC CHECKOUT AUTOMATIQUE
 Future<void> validateOrder({String saleType = 'ORDER'}) async {
   try {
-    print('📄 === VALIDATION COMMANDE ===');
-    
+
     if (!_canValidateOrder()) {
-      print('❌ Validation impossible');
       return;
     }
     
     // Dialogue de validation avec commentaire
     final validationResult = await _showValidationDialogWithComment(saleType: saleType);
     if (validationResult == null || !validationResult['confirmed']) {
-      print('❌ Validation annulée par l\'utilisateur');
       return;
     }
     
     final String? orderComment = validationResult['comment'];
     
     isValidatingOrder.value = true;
-    print('📄 Début validation...');
 
     // Récupérer la géolocalisation
-    print('📍 Starting order validation...');
-    
+
     final locationService = Get.find<LocationService>();
     final position = await locationService.getCurrentPosition();
-    
-    if (position != null) {
-      print('📍 GPS: Order validation successful (accuracy: ${position.accuracy}m)');
-    } else {
-      print('📍 GPS: Order validation failed, using null position');
-    }
-    
+
     double? latitude = position?.latitude;
     double? longitude = position?.longitude;
-    
 
     // Créer la commande finale avec le commentaire
     final finalOrder = currentOrder.value!.copyWith(
@@ -403,8 +371,6 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
       longitude: longitude,
     );
     
-    print('💾 Commande à valider: $finalOrder');
-    print('💬 Commentaire: "${finalOrder.comment}"');
 
     // Construire SaleRequest pour la façade /api/sales
     final user = _authController.user.value;
@@ -443,12 +409,8 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
       returnCondition: returnCondition,
     );
 
-    print('📤 Envoi de la vente via /api/sales: ${saleRequest.toJson()}');
-
     // 1. APPEL FAÇADE SALES
     final SaleResponse saleResponse = await _salesService.createSale(saleRequest);
-
-    print('✅ Réponse façade Sales: ${saleResponse.documentType} #${saleResponse.documentNumber}');
 
     // 2. MISE À JOUR DE L'ÉTAT LOCAL (si ORDER)
     if (saleResponse.documentType == 'ORDER') {
@@ -459,15 +421,12 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
           orElse: () => OrderStatus.VALIDATED,
         ),
       );
-      print('✅ Commande locale mise à jour avec ID: ${saleResponse.documentId}');
     } else {
       // Pour BL, on garde seulement le contexte local pour l'instant
       currentOrder.value = finalOrder;
-      print('ℹ️ Document BL créé côté serveur (ID: ${saleResponse.documentId})');
     }
     
     // 3. VIDER LE PANIER
-    print('🗑️ Vidage du panier après succès...');
     clearCart();
     
     // 4. MESSAGE DE SUCCÈS
@@ -495,8 +454,6 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     );
     
     // 5. NAVIGATION VERS CONFIRMATION
-    print('🧭 Navigation vers confirmation...');
-    
     // ✅ FERMER LE BOTTOM SHEET AVANT LA NAVIGATION
     if (Get.isBottomSheetOpen == true) {
       Get.back(); // Fermer le bottom sheet du panier
@@ -512,11 +469,9 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     final tourneeController = Get.find<TourneeController>();
     await tourneeController.refresh();
     
-    print('✅ === FIN VALIDATION COMMANDE ===');
-    
+
   } catch (e) {
-  print('❌ Erreur validation: $e');
-  
+
   // Le service gère déjà l'extraction du message serveur
   final errorMessage = e.toString().replaceAll('Exception: ', '');
   
@@ -685,9 +640,7 @@ Future<Map<String, dynamic>?> _showValidationDialogWithComment({String? saleType
 
 /// 🛒 VIDER LE PANIER - Version améliorée
 void clearCart() {
-  print('🗑️ === VIDAGE PANIER ===');
-  print('Avant: ${cartItems.length} articles, ${cartTotal.value}€');
-  
+
   cartItems.clear();
   cartTotal.value = 0.0;
   cartItemCount.value = 0;
@@ -696,8 +649,6 @@ void clearCart() {
   cartTotal.refresh();
   cartItemCount.refresh();
   
-  print('Après: ${cartItems.length} articles, ${cartTotal.value}€');
-  print('✅ === PANIER VIDÉ ===');
 }
 
   /// 🧹 NETTOYAGE
@@ -710,7 +661,6 @@ void clearCart() {
     filteredProducts.value = allProducts;
     hasError.value = false;
     
-    print('🧹 Session commande nettoyée');
   }
   
   /// 🔄 REFRESH DONNÉES
@@ -729,15 +679,11 @@ void clearCart() {
         throw Exception('Utilisateur non connecté');
       }
 
-      print('📜 Chargement de l\'historique des ventes pour user ${user.id}');
-
       final history = await _salesService.getUserHistory(user.id);
 
       salesHistory.value = history;
 
-      print('✅ Historique chargé: ${history.length} documents');
     } catch (e) {
-      print('❌ Erreur chargement historique ventes: $e');
       Get.snackbar(
         'Erreur',
         'Impossible de charger l\'historique des ventes',
@@ -825,7 +771,6 @@ void clearCart() {
       duration: Duration(seconds: 3),
     );
     
-    print('❌ $title: $error');
   }
 
   /// 📦 HELPER : Vérifier si la quantité demandée est disponible en stock

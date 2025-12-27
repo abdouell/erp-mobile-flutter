@@ -60,14 +60,10 @@ class PaymentController extends GetxController {
         throw Exception('ID du BL manquant');
       }
 
-      print('📋 Chargement des paiements pour BL #$blId');
-
       final loadedPayments = await _paymentService.getPaymentsByDocument(blId);
       payments.value = loadedPayments;
-
-      print('✅ ${loadedPayments.length} paiements chargés');
+      
     } catch (e) {
-      print('❌ Erreur chargement paiements: $e');
       Get.snackbar(
         'Erreur',
         'Impossible de charger les paiements',
@@ -111,10 +107,6 @@ class PaymentController extends GetxController {
         throw Exception('Données manquantes');
       }
 
-      print('💳 Création paiement...');
-      print('📊 Order ID: ${currentOrder.id}, Client ID: ${currentOrder.customerId}, User ID: ${user.id}');
-      print('💰 Amount: ${amountController.text}, Method: ${selectedMethod.value}');
-
       await _paymentService.createPayment(
         salesDocumentId: currentOrder.id!,
         clientId: currentOrder.customerId,
@@ -123,9 +115,6 @@ class PaymentController extends GetxController {
         method: selectedMethod.value,
         note: noteController.text.isEmpty ? null : noteController.text,
       );
-
-      print('✅ Paiement créé avec succès');
-      print('🔙 Retour à la page précédente...');
 
       // ✅ IMPORTANT: Désactiver isSubmitting AVANT Get.back
       isSubmitting.value = false;
@@ -146,9 +135,6 @@ class PaymentController extends GetxController {
       });
 
     } catch (e, stackTrace) {
-      print('❌ Erreur création paiement: $e');
-      print('📍 StackTrace: $stackTrace');
-
       isSubmitting.value = false;
 
       Get.snackbar(

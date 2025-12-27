@@ -19,10 +19,8 @@ class PaymentService {
 
       return [];
     } on DioError catch (e) {
-      print('❌ Erreur chargement paiements document: ${e.response?.statusCode}');
       throw Exception('Impossible de charger les paiements');
     } catch (e) {
-      print('❌ Erreur chargement paiements document: $e');
       throw Exception('Impossible de charger les paiements');
     }
   }
@@ -40,10 +38,8 @@ class PaymentService {
 
       return [];
     } on DioError catch (e) {
-      print('❌ Erreur chargement paiements client: ${e.response?.statusCode}');
       throw Exception('Impossible de charger les paiements du client');
     } catch (e) {
-      print('❌ Erreur chargement paiements client: $e');
       throw Exception('Impossible de charger les paiements du client');
     }
   }
@@ -69,8 +65,6 @@ class PaymentService {
 
       return Payment.fromJson(response.data);
     } on DioError catch (e) {
-      print('❌ Erreur création paiement: ${e.response?.statusCode}');
-      print('Response data: ${e.response?.data}');
 
       if (e.response?.statusCode == 400) {
         throw Exception('Données invalides');
@@ -82,7 +76,6 @@ class PaymentService {
         throw Exception('Erreur serveur');
       }
     } catch (e) {
-      print('❌ Erreur création paiement: $e');
       throw Exception('Impossible de créer le paiement');
     }
   }

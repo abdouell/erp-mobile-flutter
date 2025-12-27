@@ -14,7 +14,6 @@ class ProductPhotoHelper {
       }
       return null;
     } catch (e) {
-      print('⚠️ Erreur décodage photo: $e');
       return null;
     }
   }

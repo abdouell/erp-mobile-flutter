@@ -82,8 +82,6 @@ class SalesService extends GetxService {
         // On le transforme en Order pour réutiliser l'écran existant
         final data = response.data as Map<String, dynamic>;
         
-        print('📦 Données reçues du backend: $data');
-        
         // Transformer les lignes en orderDetails
         final List<dynamic> linesJson = data['lines'] ?? [];
         final orderDetails = linesJson.map((line) {
@@ -112,8 +110,6 @@ class SalesService extends GetxService {
           'comment': data['comment'],
           'orderDetails': orderDetails,
         };
-        
-        print('📝 JSON transformé pour Order: $orderJson');
         
         return Order.fromJson(orderJson);
       }

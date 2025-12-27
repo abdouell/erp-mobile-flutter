@@ -25,8 +25,6 @@ class TourneeService extends GetxService {
       return Vendeur.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('Erreur Dio: ${e.response?.statusCode}');
-      print('Response data: ${e.response?.data}');
       
       if (e.response?.statusCode == 403) {
         throw Exception('Accès refusé : permissions insuffisantes');
@@ -36,7 +34,6 @@ class TourneeService extends GetxService {
         throw Exception('Erreur serveur lors de la récupération du vendeur');
       }
     } catch (e) {
-      print('Erreur générale: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -62,10 +59,8 @@ class TourneeService extends GetxService {
       return tournee;
       
     } on DioException catch (e) {
-      print('Erreur récupération tournée: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération de la tournée');
     } catch (e) {
-      print('Erreur générale tournée: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -73,8 +68,7 @@ class TourneeService extends GetxService {
   /// Clôturer une tournée (affectation-aware)
   Future<void> clotureTournee(int tourneeId, int vendeurId) async {
     try {
-      print('🔒 Clôture tournée $tourneeId');
-      
+
       final response = await _apiService.dio.post(
         '/api/tournee/$tourneeId/cloture',
         queryParameters: {
@@ -82,12 +76,9 @@ class TourneeService extends GetxService {
         },
       );
       
-      print('✅ Tournée clôturée avec succès');
       return;
       
     } on DioException catch (e) {
-      print('❌ Erreur clôture tournée: ${e.response?.statusCode}');
-      print('Response data: ${e.response?.data}');
       
       if (e.response?.statusCode == 404) {
         throw Exception('Tournée introuvable');
@@ -105,7 +96,6 @@ class TourneeService extends GetxService {
         throw Exception('Erreur serveur lors de la clôture');
       }
     } catch (e) {
-      print('❌ Erreur générale clôture: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -123,10 +113,6 @@ class TourneeService extends GetxService {
     {double? latitude, double? longitude}
   ) async {
     try {
-      print('🔄 Check-in client $clientTourneeId');
-      if (latitude != null && longitude != null) {
-        print('📍 Position GPS: $latitude, $longitude');
-      }
       
       final request = CheckinRequest(
         latitude: latitude,
@@ -142,14 +128,9 @@ class TourneeService extends GetxService {
         data: request.toJson(),
       );
       
-      print('✅ Check-in effectué avec succès');
-      print('   → visiteId créé: ${response.data['visiteId']}');
-      
       return VisitStatusResponse.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('❌ Erreur Dio check-in: ${e.response?.statusCode}');
-      print('Response data: ${e.response?.data}');
       
       if (e.response?.statusCode == 404) {
         throw Exception('Client de tournée introuvable');
@@ -169,7 +150,6 @@ class TourneeService extends GetxService {
         throw Exception('Erreur serveur lors du check-in');
       }
     } catch (e) {
-      print('❌ Erreur générale check-in: $e');
       throw Exception('Erreur inattendue: $e');
     }
   }
@@ -182,7 +162,6 @@ class TourneeService extends GetxService {
     {double? latitude, double? longitude}
   ) async {
     try {
-      print('🛒 Check-out avec commande visite $visiteId');
       
       final request = CheckoutRequest.withOrder(
         latitude: latitude,
@@ -194,11 +173,9 @@ class TourneeService extends GetxService {
         data: request.toJson(),
       );
       
-      print('✅ Check-out avec commande effectué');
       return VisitStatusResponse.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('❌ Erreur check-out commande: ${e.response?.statusCode}');
       
       if (e.response?.statusCode == 404) {
         throw Exception('Visite introuvable');
@@ -222,7 +199,6 @@ class TourneeService extends GetxService {
     {double? latitude, double? longitude}
   ) async {
     try {
-      print('🔄 Check-out sans vente visite $visiteId - Motif: $motif');
       
       final request = CheckoutRequest.withoutSale(
         latitude: latitude,
@@ -236,11 +212,9 @@ class TourneeService extends GetxService {
         data: request.toJson(),
       );
       
-      print('✅ Check-out sans vente effectué');
       return VisitStatusResponse.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('❌ Erreur check-out sans vente: ${e.response?.statusCode}');
       
       if (e.response?.statusCode == 404) {
         throw Exception('Visite introuvable');
@@ -259,7 +233,6 @@ class TourneeService extends GetxService {
   /// Endpoint: GET /api/tournee/visite/{visiteId}/status
   Future<VisitStatusResponse> getVisitStatus(int visiteId) async {
     try {
-      print('📊 Récupération statut visite $visiteId');
       
       final response = await _apiService.dio.get(
         '/api/tournee/visite/$visiteId/status',
@@ -268,7 +241,6 @@ class TourneeService extends GetxService {
       return VisitStatusResponse.fromJson(response.data);
       
     } on DioException catch (e) {
-      print('❌ Erreur récupération statut: ${e.response?.statusCode}');
       throw Exception('Erreur lors de la récupération du statut');
     } catch (e) {
       throw Exception('Erreur inattendue: $e');

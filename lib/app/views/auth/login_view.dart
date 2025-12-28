@@ -15,7 +15,7 @@ class LoginView extends GetView<AuthController> {
               // Logo/Titre
               Image.asset(  'assets/images/distrimob_logo.png',width: 200,  fit: BoxFit.contain),
               SizedBox(height: 16),
-              Text('Connexion vendeur 2.0', style: TextStyle(color: Colors.grey)),
+              Text('DistriMob 1.0', style: TextStyle(color: Colors.grey)),
               SizedBox(height: 48),
               // Champ Username
               TextFormField(

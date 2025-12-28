@@ -119,182 +119,184 @@ Future<Map<String, dynamic>?> _showMandatoryClotureDialog(ClientTournee client) 
   String? selectedMotif;
   final TextEditingController noteController = TextEditingController();
   
-  return await Get.dialog<Map<String, dynamic>>(
-    AlertDialog(
-      // ✅ CONTRAINDRE LA LARGEUR
-      contentPadding: EdgeInsets.zero,
-      insetPadding: EdgeInsets.symmetric(horizontal: 40), // Marges latérales
-      content: Container(
-        width: Get.width * 0.85, // 85% de la largeur d'écran maximum
-        constraints: BoxConstraints(
-          maxWidth: 400, // Largeur maximum fixe
-        ),
-        child: StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header personnalisé
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning, color: Colors.orange),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Clôture obligatoire',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+  try {
+    return await Get.dialog<Map<String, dynamic>>(
+      AlertDialog(
+        // ✅ CONTRAINDRE LA LARGEUR
+        contentPadding: EdgeInsets.zero,
+        insetPadding: EdgeInsets.symmetric(horizontal: 40), // Marges latérales
+        content: Container(
+          width: Get.width * 0.85, // 85% de la largeur d'écran maximum
+          constraints: BoxConstraints(
+            maxWidth: 400, // Largeur maximum fixe
+          ),
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header personnalisé
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Clôture obligatoire',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          noteController.dispose();
-                          Get.back(result: {'confirmed': false});
-                        },
-                        icon: Icon(Icons.close),
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Contenu principal
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Message plus compact
-                      Text(
-                        'Visite en cours pour ${client.customerName}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                      
-                      SizedBox(height: 16),
-                      
-                      Text(
-                        'Motif de clôture *',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 8),
-                      
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: selectedMotif,
-                            hint: Text('  Sélectionner un motif'),
-                            isExpanded: true,
-                            items: MOTIFS_VISITE.map((motif) {
-                              return DropdownMenuItem<String>(
-                                value: motif['code'],
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(
-                                    motif['libelle']!,
-                                    style: TextStyle(fontSize: 14), // Texte plus petit
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setDialogState(() {
-                                selectedMotif = value;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      
-                      SizedBox(height: 12),
-                      
-                      Text(
-                        'Note (optionnel)',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 8),
-                      TextField(
-                        controller: noteController,
-                        maxLines: 2, // Réduit à 2 lignes
-                        maxLength: 100, // Réduit la longueur
-                        style: TextStyle(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Note...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: EdgeInsets.all(10), // Padding réduit
-                          isDense: true, // Plus compact
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Actions
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
+                        IconButton(
                           onPressed: () {
-                            noteController.dispose();
                             Get.back(result: {'confirmed': false});
                           },
-                          child: Text('Reporter'),
+                          icon: Icon(Icons.close),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: selectedMotif == null 
-                              ? null 
-                              : () {
-                                  final note = noteController.text.trim();
-                                  noteController.dispose();
-                                  Get.back(result: {
-                                    'confirmed': true,
-                                    'motif': selectedMotif!,
-                                    'note': note.isEmpty ? null : note,
-                                  });
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text('Clôturer'),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                  
+                  // Contenu principal
+                  Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Message plus compact
+                        Text(
+                          'Visite en cours pour ${client.customerName}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                        
+                        SizedBox(height: 16),
+                        
+                        Text(
+                          'Motif de clôture *',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedMotif,
+                              hint: Text('  Sélectionner un motif'),
+                              isExpanded: true,
+                              items: MOTIFS_VISITE.map((motif) {
+                                return DropdownMenuItem<String>(
+                                  value: motif['code'],
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 12),
+                                    child: Text(
+                                      motif['libelle']!,
+                                      style: TextStyle(fontSize: 14), // Texte plus petit
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setDialogState(() {
+                                  selectedMotif = value;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        
+                        SizedBox(height: 12),
+                        
+                        Text(
+                          'Note (optionnel)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        TextField(
+                          controller: noteController,
+                          maxLines: 2, // Réduit à 2 lignes
+                          maxLength: 100, // Réduit la longueur
+                          style: TextStyle(fontSize: 14),
+                          decoration: InputDecoration(
+                            hintText: 'Note...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: EdgeInsets.all(10), // Padding réduit
+                            isDense: true, // Plus compact
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Actions
+                  Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () {
+                              Get.back(result: {'confirmed': false});
+                            },
+                            child: Text('Reporter'),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: selectedMotif == null 
+                                ? null 
+                                : () {
+                                    final note = noteController.text.trim();
+                                    Get.back(result: {
+                                      'confirmed': true,
+                                      'motif': selectedMotif!,
+                                      'note': note.isEmpty ? null : note,
+                                    });
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text('Clôturer'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
-    ),
-    barrierDismissible: true,
-  );
+      barrierDismissible: true,
+    );
+  } finally {
+    // Toujours disposer le controller, même si le dialogue est fermé de manière inattendue
+    noteController.dispose();
+  }
 }
 
   // ✅ NOUVEAU : Effectuer la clôture de visite

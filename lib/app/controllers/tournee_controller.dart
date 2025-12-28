@@ -65,62 +65,12 @@ class TourneeController extends GetxController {
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = null; // Force un changement
       tourneeToday.value = tournee; // Réassignation
-    } on NetworkException catch (e) {
-      hasError.value = true;
-      errorMessage.value = e.message;
-      Get.snackbar(
-        'Erreur réseau',
-        'Vérifiez votre connexion internet',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
-    } on ServerException catch (e) {
-      hasError.value = true;
-      errorMessage.value = e.message;
-      Get.snackbar(
-        'Erreur serveur',
-        'Le serveur rencontre des difficultés. Réessayez plus tard.',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
-    } on UnauthorizedException catch (e) {
-      hasError.value = true;
-      errorMessage.value = e.message;
-      Get.snackbar(
-        'Session expirée',
-        'Veuillez vous reconnecter',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
-    } on NotFoundException catch (e) {
-      hasError.value = true;
-      errorMessage.value = e.message;
-      Get.snackbar(
-        'Données introuvables',
-        'Aucune tournée trouvée pour aujourd\'hui',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
-    } on BusinessException catch (e) {
-      hasError.value = true;
-      errorMessage.value = e.message;
-      Get.snackbar(
-        'Erreur',
-        e.message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
     } catch (e) {
       hasError.value = true;
       errorMessage.value = e.toString().replaceAll('Exception: ', '');
       Get.snackbar(
         'Erreur',
-        'Une erreur inattendue est survenue',
+        'Une erreur est survenue: ${e.toString().replaceAll('Exception: ', '')}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: Duration(seconds: 3),

@@ -84,17 +84,24 @@ class OrderDetailsController extends GetxController {
       hasError.value = false;
       
       // Appeler l'API unifiée via SalesService
-      final loadedOrder = await _salesService.getDocumentDetails(
-        type: documentType,
-        id: docId,
+      final loadedDocument = await _salesService.getDocumentDetails(
+        documentType,
+        docId,
       );
       
-      order.value = loadedOrder;
-      orderItems.value = loadedOrder.orderDetails;
+      // Handle different document types
+      if (documentType == 'ORDER') {
+        order.value = loadedDocument as Order;
+        orderItems.value = (loadedDocument as Order).orderDetails;
+      } else {
+        // For BL and other documents, handle differently
+        // TODO: Create proper BL model or use SalesDocumentHistory
+        orderItems.value = []; // Empty for now
+      }
       
       // Charger les infos client en parallèle (non bloquant)
-      if (loadedOrder.customerId > 0) {
-        _loadCustomerInfo(loadedOrder.customerId);
+      if (documentType == 'ORDER' && order.value != null) {
+        _loadCustomerInfo(order.value!.customerId);
       }
       
     } catch (e) {
@@ -233,8 +240,8 @@ class OrderDetailsController extends GetxController {
       
       // Appel au service unifié SalesController (type ORDER)
       await _salesService.downloadDocumentPdf(
-        type: 'ORDER',
-        id: currentOrder!.id!,
+        'ORDER',
+        currentOrder!.id!,
       );
       
       Get.back(); // Fermer loading

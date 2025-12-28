@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import '../models/sale_request.dart';
 import '../models/sale_response.dart';

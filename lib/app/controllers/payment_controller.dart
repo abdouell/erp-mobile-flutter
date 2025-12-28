@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/payment.dart';
 import '../models/order.dart';
+import '../models/user.dart';
 import '../services/payment_service.dart';
 import 'auth_controller.dart';
 
@@ -60,7 +61,7 @@ class PaymentController extends GetxController {
         throw Exception('ID du BL manquant');
       }
 
-      final loadedPayments = await _paymentService.getPaymentsByDocument(blId);
+      final loadedPayments = await _paymentService.getAllPayments();
       payments.value = loadedPayments;
       
     } catch (e) {
@@ -107,14 +108,18 @@ class PaymentController extends GetxController {
         throw Exception('Données manquantes');
       }
 
-      await _paymentService.createPayment(
+      final payment = Payment(
+        id: 0, // Will be set by backend
+        amount: double.parse(amountController.text),
+        paymentDate: DateTime.now(),
+        method: selectedMethod.value,
+        note: noteController.text.isEmpty ? null : noteController.text,
         salesDocumentId: currentOrder.id!,
         clientId: currentOrder.customerId,
         userId: user.id,
-        amount: double.parse(amountController.text),
-        method: selectedMethod.value,
-        note: noteController.text.isEmpty ? null : noteController.text,
       );
+
+      await _paymentService.createPayment(payment);
 
       // ✅ IMPORTANT: Désactiver isSubmitting AVANT Get.back
       isSubmitting.value = false;

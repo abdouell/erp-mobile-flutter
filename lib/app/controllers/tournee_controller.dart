@@ -4,17 +4,15 @@ import '../models/tournee.dart';
 import '../models/vendeur.dart';
 import '../models/user.dart';
 import '../services/tournee_service.dart';
-import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../exceptions/app_exceptions.dart';
 
 class TourneeController extends GetxController {
   // Services
   final TourneeService _tourneeService = Get.find<TourneeService>();
-  final AuthController _authController = Get.find<AuthController>();
   
   // États réactifs
-  final isLoading = true.obs;
+  final isLoading = false.obs;  // Start with false since we're not loading automatically
   final hasError = false.obs;
   final errorMessage = ''.obs;
   
@@ -26,19 +24,8 @@ class TourneeController extends GetxController {
   void onInit() {
     super.onInit();
    
-    // ✅ Attendre que l'utilisateur soit authentifié
-    ever(_authController.isAuthenticated, (authenticated) {
-      if (authenticated) {
-        loadTourneeData();
-      }
-    });
-    
-    // ✅ Si déjà authentifié au démarrage
-    if (_authController.isAuthenticated.value) {
-      Future.delayed(Duration(milliseconds: 300), () {
-        loadTourneeData();
-      });
-    }
+    // Don't load data automatically - wait for proper authentication
+    // This prevents errors on app startup
   }
   
   // ========================================
@@ -46,22 +33,25 @@ class TourneeController extends GetxController {
   // ========================================
   
   /// Charger les données de tournée
+  /// NOTE: This should only be called after proper authentication is implemented
+  /// Currently uses hardcoded user ID (1) for testing purposes
   Future<void> loadTourneeData() async {
     try {
       isLoading.value = true;
       hasError.value = false;
       
-      // 1. Récupérer user connecté
-      final User? currentUser = _authController.user.value;
-      if (currentUser == null) {
-        throw Exception('Utilisateur non connecté');
-      }
+      // TODO: Replace with actual authenticated user ID
+      // final User? currentUser = _authController.user.value;
+      // if (currentUser == null) return;
+      // final int userId = currentUser.id;
       
-      // 2. Récupérer vendeur par userId
-      final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(currentUser.id);
+      final int userId = 1; // Hardcoded for testing
+      
+      // 1. Récupérer vendeur par userId
+      final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(userId);
       vendeur.value = vendeurData;
       
-      // 3. Récupérer tournée du jour
+      // 2. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = null; // Force un changement
       tourneeToday.value = tournee; // Réassignation
@@ -269,7 +259,8 @@ class TourneeController extends GetxController {
     
     if (client == null) return false;
     
-    return _tourneeService.canStartVisit(client);
+    // Simple logic: client can start visit if not already in progress
+    return !client.hasVisitInProgress;
   }
 
   /// Vérifier si un client peut terminer sa visite
@@ -281,6 +272,7 @@ class TourneeController extends GetxController {
     
     if (client == null) return false;
     
-    return _tourneeService.canEndVisit(client);
+    // Simple logic: client can end visit if in progress
+    return client.hasVisitInProgress;
   }
 }

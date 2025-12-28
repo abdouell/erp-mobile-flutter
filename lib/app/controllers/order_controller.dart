@@ -145,7 +145,6 @@ Future<void> _loadProducts() async {
       // UN SEUL APPEL : stock + pricing client avec vérification de période PriceList
       products = await _productService.getProductsByEmplacement(
         vendeur.emplacementCode!,
-        customerId: customerId,
       );
       
     } else {

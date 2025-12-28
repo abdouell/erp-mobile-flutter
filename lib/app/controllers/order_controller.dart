@@ -464,6 +464,26 @@ Future<void> validateOrder({String saleType = 'ORDER'}) async {
     final tourneeController = Get.find<TourneeController>();
     await tourneeController.refresh();
     
+    // ✅ CHECKOUT : Fermer la visite en cours si c'est une commande
+    if (saleResponse.documentType == 'ORDER' && selectedClient.value != null) {
+      try {
+        // Trouver le client dans la tournée pour obtenir le visiteId
+        final tournee = tourneeController.tourneeToday.value;
+        if (tournee != null) {
+          final clientTournee = tournee.clients.firstWhereOrNull(
+            (c) => c.customerId == selectedClient.value!.customerId
+          );
+          
+          if (clientTournee != null && clientTournee.currentVisite != null) {
+            await tourneeController.checkoutWithOrder(clientTournee.currentVisite!.id!);
+          }
+        }
+      } catch (e) {
+        // Pas critique si le checkout échoue, l'ordre est déjà créé
+        print('Erreur lors du checkout de la visite: $e');
+      }
+    }
+    
   } finally {
     isValidatingOrder.value = false;
   }

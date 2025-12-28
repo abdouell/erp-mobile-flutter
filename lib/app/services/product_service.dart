@@ -8,7 +8,7 @@ class ProductService extends GetxService {
   // Cache simple pour les produits
   List<Product>? _cachedProducts;
 
-  /// Obtenir tous les produits
+  /// Récupérer tous les produits
   Future<List<Product>> getAllProducts() async {
     // Utiliser le cache si disponible
     if (_cachedProducts != null) {
@@ -16,7 +16,7 @@ class ProductService extends GetxService {
     }
     
     final response = await _apiService.dio.get('/api/product');
-    
+
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();
     
@@ -36,23 +36,34 @@ class ProductService extends GetxService {
         .toList();
     
     categories.sort(); // Tri alphabétique
+    
     return categories;
   }
   
-  /// Obtenir les produits par emplacement
-  Future<List<Product>> getProductsByEmplacement(String emplacement) async {
-    final response = await _apiService.dio.get('/api/product/emplacement/$emplacement');
-    
+  /// Récupérer les produits disponibles en stock pour un emplacement
+  /// Avec pricing client si customerId fourni
+  /// Utilisé pour les vendeurs conventionnels
+  Future<List<Product>> getProductsByEmplacement(String emplacementCode, {int? customerId}) async {
+    final response = await _apiService.dio.get(
+      '/api/product/emplacement/$emplacementCode/stock',
+      queryParameters: customerId != null ? {'customerId': customerId} : null,
+    );
+
     final List<dynamic> productsJson = response.data ?? [];
-    return productsJson.map((json) => Product.fromJson(json)).toList();
+    final products = productsJson.map((json) => Product.fromJson(json)).toList();
+    
+    return products;
   }
   
-  /// Obtenir les produits pour un client
+  /// Récupérer les produits avec tarification client personnalisée
+  /// Affiche prix catalogue + prix client + % remise
   Future<List<Product>> getProductsForCustomer(int customerId) async {
-    final response = await _apiService.dio.get('/api/product/customer/$customerId');
+    final response = await _apiService.dio.get('/api/product/customer/$customerId/pricing');
     
     final List<dynamic> productsJson = response.data ?? [];
-    return productsJson.map((json) => Product.fromJson(json)).toList();
+    final products = productsJson.map((json) => Product.fromJson(json)).toList();
+    
+    return products;
   }
   
   /// Vider le cache des produits

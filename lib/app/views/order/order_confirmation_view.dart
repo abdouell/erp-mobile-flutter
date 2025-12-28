@@ -662,7 +662,7 @@ class OrderConfirmationView extends StatelessWidget {
 
       // Appel au service unifié SalesController
       final salesService = Get.find<SalesService>();
-      final bytes = await salesService.downloadDocumentPdf(type, id);
+      final bytes = await salesService.downloadDocumentPdf(type: type, id: id);
 
       // Flutter Web: déclencher un vrai téléchargement dans le navigateur
       final blob = html.Blob([bytes], 'application/pdf');

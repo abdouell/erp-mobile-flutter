@@ -176,8 +176,8 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
 
       final salesService = Get.find<SalesService>();
       final bytes = await salesService.downloadDocumentPdf(
-        doc.documentType,
-        doc.id,
+        type: doc.documentType,
+        id: doc.id,
       );
 
       // Déclencher le téléchargement

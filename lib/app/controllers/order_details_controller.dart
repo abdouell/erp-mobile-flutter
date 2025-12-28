@@ -83,25 +83,32 @@ class OrderDetailsController extends GetxController {
       isLoading.value = true;
       hasError.value = false;
       
-      // Appeler l'API unifiée via SalesService
-      final loadedDocument = await _salesService.getDocumentDetails(
-        documentType,
-        docId,
-      );
-      
       // Handle different document types
       if (documentType == 'ORDER') {
-        order.value = loadedDocument as Order;
-        orderItems.value = (loadedDocument as Order).orderDetails;
+        // Use OrderService for orders
+        final loadedOrder = await _orderService.getOrderById(docId);
+        order.value = loadedOrder;
+        orderItems.value = loadedOrder.orderDetails;
+        
+        // Load customer info
+        if (loadedOrder.customerId != null) {
+          await _loadCustomerInfo(loadedOrder.customerId!);
+        }
       } else {
-        // For BL and other documents, handle differently
-        // TODO: Create proper BL model or use SalesDocumentHistory
-        orderItems.value = []; // Empty for now
-      }
-      
-      // Charger les infos client en parallèle (non bloquant)
-      if (documentType == 'ORDER' && order.value != null) {
-        _loadCustomerInfo(order.value!.customerId);
+        // For BL and other documents, use SalesService
+        final loadedDocument = await _salesService.getDocumentDetails(
+          type: documentType,
+          id: docId,
+        );
+        
+        // getDocumentDetails now returns Order for both ORDER and BL
+        order.value = loadedDocument;
+        orderItems.value = loadedDocument.orderDetails;
+        
+        // Load customer info
+        if (loadedDocument.customerId != null) {
+          await _loadCustomerInfo(loadedDocument.customerId!);
+        }
       }
       
     } catch (e) {
@@ -240,8 +247,8 @@ class OrderDetailsController extends GetxController {
       
       // Appel au service unifié SalesController (type ORDER)
       await _salesService.downloadDocumentPdf(
-        'ORDER',
-        currentOrder!.id!,
+        type: 'ORDER',
+        id: currentOrder!.id!,
       );
       
       Get.back(); // Fermer loading

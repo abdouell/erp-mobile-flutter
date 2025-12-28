@@ -6,13 +6,15 @@ import '../models/user.dart';
 import '../services/tournee_service.dart';
 import '../services/location_service.dart';
 import '../exceptions/app_exceptions.dart';
+import 'auth_controller.dart';
 
 class TourneeController extends GetxController {
   // Services
   final TourneeService _tourneeService = Get.find<TourneeService>();
+  final AuthController _authController = Get.find<AuthController>();
   
   // États réactifs
-  final isLoading = false.obs;  // Start with false since we're not loading automatically
+  final isLoading = true.obs;
   final hasError = false.obs;
   final errorMessage = ''.obs;
   
@@ -24,8 +26,19 @@ class TourneeController extends GetxController {
   void onInit() {
     super.onInit();
    
-    // Don't load data automatically - wait for proper authentication
-    // This prevents errors on app startup
+    // ✅ Attendre que l'utilisateur soit authentifié
+    ever(_authController.isAuthenticated, (authenticated) {
+      if (authenticated) {
+        loadTourneeData();
+      }
+    });
+    
+    // ✅ Si déjà authentifié au démarrage
+    if (_authController.isAuthenticated.value) {
+      Future.delayed(Duration(milliseconds: 300), () {
+        loadTourneeData();
+      });
+    }
   }
   
   // ========================================
@@ -33,25 +46,22 @@ class TourneeController extends GetxController {
   // ========================================
   
   /// Charger les données de tournée
-  /// NOTE: This should only be called after proper authentication is implemented
-  /// Currently uses hardcoded user ID (1) for testing purposes
   Future<void> loadTourneeData() async {
     try {
       isLoading.value = true;
       hasError.value = false;
       
-      // TODO: Replace with actual authenticated user ID
-      // final User? currentUser = _authController.user.value;
-      // if (currentUser == null) return;
-      // final int userId = currentUser.id;
+      // 1. Récupérer user connecté
+      final User? currentUser = _authController.user.value;
+      if (currentUser == null) {
+        throw Exception('Utilisateur non connecté');
+      }
       
-      final int userId = 1; // Hardcoded for testing
-      
-      // 1. Récupérer vendeur par userId
-      final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(userId);
+      // 2. Récupérer vendeur par userId
+      final Vendeur vendeurData = await _tourneeService.getVendeurByUserId(currentUser.id);
       vendeur.value = vendeurData;
       
-      // 2. Récupérer tournée du jour
+      // 3. Récupérer tournée du jour
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = null; // Force un changement
       tourneeToday.value = tournee; // Réassignation
@@ -60,7 +70,7 @@ class TourneeController extends GetxController {
       errorMessage.value = e.toString().replaceAll('Exception: ', '');
       Get.snackbar(
         'Erreur',
-        'Une erreur est survenue: ${e.toString().replaceAll('Exception: ', '')}',
+        'Une erreur est survenue: ${errorMessage.value}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: Duration(seconds: 3),
@@ -259,8 +269,7 @@ class TourneeController extends GetxController {
     
     if (client == null) return false;
     
-    // Simple logic: client can start visit if not already in progress
-    return !client.hasVisitInProgress;
+    return _tourneeService.canStartVisit(client);
   }
 
   /// Vérifier si un client peut terminer sa visite
@@ -272,7 +281,6 @@ class TourneeController extends GetxController {
     
     if (client == null) return false;
     
-    // Simple logic: client can end visit if in progress
-    return client.hasVisitInProgress;
+    return _tourneeService.canEndVisit(client);
   }
 }

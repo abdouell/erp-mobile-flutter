@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import '../exceptions/app_exceptions.dart';
 
 class LocationService extends GetxService {
   
@@ -38,7 +39,7 @@ class LocationService extends GetxService {
         if (lastKnownPosition != null) {
           return lastKnownPosition;
         }
-        throw Exception('Service de géolocalisation désactivé');
+        throw BusinessException('Service de géolocalisation désactivé');
       }
       
       if (!await hasPermission()) {
@@ -46,7 +47,7 @@ class LocationService extends GetxService {
           if (lastKnownPosition != null) {
             return lastKnownPosition;
           }
-          throw Exception('Permission géolocalisation refusée');
+          throw BusinessException('Permission géolocalisation refusée');
         }
       }
       

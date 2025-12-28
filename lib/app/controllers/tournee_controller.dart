@@ -1,10 +1,12 @@
-import 'package:erp_mobile/app/services/location_service.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/tournee.dart';
 import '../models/vendeur.dart';
 import '../models/user.dart';
 import '../services/tournee_service.dart';
-import 'auth_controller.dart';
+import '../services/auth_service.dart';
+import '../services/location_service.dart';
+import '../exceptions/app_exceptions.dart';
 
 class TourneeController extends GetxController {
   // Services
@@ -63,10 +65,66 @@ class TourneeController extends GetxController {
       final Tournee? tournee = await _tourneeService.getTourneeToday(vendeurData.id);
       tourneeToday.value = null; // Force un changement
       tourneeToday.value = tournee; // Réassignation
+    } on NetworkException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+      Get.snackbar(
+        'Erreur réseau',
+        'Vérifiez votre connexion internet',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+    } on ServerException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+      Get.snackbar(
+        'Erreur serveur',
+        'Le serveur rencontre des difficultés. Réessayez plus tard.',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+    } on UnauthorizedException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+      Get.snackbar(
+        'Session expirée',
+        'Veuillez vous reconnecter',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+    } on NotFoundException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+      Get.snackbar(
+        'Données introuvables',
+        'Aucune tournée trouvée pour aujourd\'hui',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+    } on BusinessException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+      Get.snackbar(
+        'Erreur',
+        e.message,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
     } catch (e) {
       hasError.value = true;
       errorMessage.value = e.toString().replaceAll('Exception: ', '');
-
+      Get.snackbar(
+        'Erreur',
+        'Une erreur inattendue est survenue',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
     } finally {
       isLoading.value = false;
     }

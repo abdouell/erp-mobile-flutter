@@ -1,12 +1,8 @@
-import 'package:dio/dio.dart';
-import 'package:erp_mobile/app/models/checkin_request.dart';
-import 'package:erp_mobile/app/models/statut_visite.dart';
 import 'package:get/get.dart';
 import '../models/tournee.dart';
 import '../models/vendeur.dart';
-import '../models/client_tournee.dart';
-import '../models/requests/checkout_request.dart';
-import '../models/requests/visit_status_response.dart';
+import '../models/visit_status_response.dart';
+import '../exceptions/app_exceptions.dart';
 import 'api_service.dart';
 
 class TourneeService extends GetxService {
@@ -18,24 +14,8 @@ class TourneeService extends GetxService {
 
   /// Récupérer vendeur par userId
   Future<Vendeur> getVendeurByUserId(int userId) async {
-    try {
-
-      final response = await _apiService.dio.get('/api/vendeur/user/$userId');
-      
-      return Vendeur.fromJson(response.data);
-      
-    } on DioException catch (e) {
-      
-      if (e.response?.statusCode == 403) {
-        throw Exception('Accès refusé : permissions insuffisantes');
-      } else if (e.response?.statusCode == 404) {
-        throw Exception('Utilisateur non autorisé : pas de profil vendeur');
-      } else {
-        throw Exception('Erreur serveur lors de la récupération du vendeur');
-      }
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
-    }
+    final response = await _apiService.dio.get('/api/vendeur/user/$userId');
+    return Vendeur.fromJson(response.data);
   }
 
   // ========================================
@@ -44,207 +24,95 @@ class TourneeService extends GetxService {
 
   /// Récupérer tournée du jour pour un vendeur
   Future<Tournee?> getTourneeToday(int vendeurId) async {
-    try {
-
-      final response = await _apiService.dio.get('/api/tournee/vendeur/$vendeurId/today');
-      
-      final List<dynamic> tourneesJson = response.data;
-      
-      if (tourneesJson.isEmpty) {
-        return null;
-      }
-      
-      final tournee = Tournee.fromJson(tourneesJson.first);
-
-      return tournee;
-      
-    } on DioException catch (e) {
-      throw Exception('Erreur lors de la récupération de la tournée');
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
+    final response = await _apiService.dio.get('/api/tournee/vendeur/$vendeurId/today');
+    
+    final List<dynamic> tourneesJson = response.data;
+    
+    if (tourneesJson.isEmpty) {
+      return null;
     }
+    
+    return Tournee.fromJson(tourneesJson.first);
   }
 
   /// Clôturer une tournée (affectation-aware)
   Future<void> clotureTournee(int tourneeId, int vendeurId) async {
-    try {
-
-      final response = await _apiService.dio.post(
-        '/api/tournee/$tourneeId/cloture',
-        queryParameters: {
-          'vendeurId': vendeurId,
-        },
-      );
-      
-      return;
-      
-    } on DioException catch (e) {
-      
-      if (e.response?.statusCode == 404) {
-        throw Exception('Tournée introuvable');
-      } else if (e.response?.statusCode == 400) {
-        // Gérer les erreurs métier
-        final errorCode = e.response?.data['code'];
-        if (errorCode == 'CLIENTS_IN_PROGRESS') {
-          throw Exception('Des clients sont encore en cours de visite');
-        } else if (errorCode == 'TOURNEE_ALREADY_CLOSED') {
-          throw Exception('La tournée est déjà terminée');
-        } else {
-          throw Exception('Impossible de clôturer la tournée');
-        }
-      } else {
-        throw Exception('Erreur serveur lors de la clôture');
-      }
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
-    }
+    await _apiService.dio.post(
+      '/api/tournee/$tourneeId/cloture',
+      queryParameters: {
+        'vendeurId': vendeurId,
+      },
+    );
   }
 
   // ========================================
   // GESTION DES VISITES
   // ========================================
 
-  /// ✅ Check-in client (crée une nouvelle visite et fait le check-in)
+  /// Check-in client (crée une nouvelle visite et fait le check-in)
   /// Endpoint: POST /api/tournee/client/{clientTourneeId}/checkin?vendeurId={id}
   /// Retourne: VisitStatusResponse avec le visiteId créé
   Future<VisitStatusResponse> checkinCustomer(
     int clientTourneeId,
-    int vendeurId, 
-    {double? latitude, double? longitude}
-  ) async {
-    try {
-      
-      final request = CheckinRequest(
-        latitude: latitude,
-        longitude: longitude,
-        clientTimestamp: DateTime.now().toIso8601String(),
-      );
-      
-      final response = await _apiService.dio.post(
-        '/api/tournee/client/$clientTourneeId/checkin',
-        queryParameters: {
-          'vendeurId': vendeurId,
-        },
-        data: request.toJson(),
-      );
-      
-      return VisitStatusResponse.fromJson(response.data);
-      
-    } on DioException catch (e) {
-      
-      if (e.response?.statusCode == 404) {
-        throw Exception('Client de tournée introuvable');
-      } else if (e.response?.statusCode == 400) {
-        final code = e.response?.data is Map<String, dynamic>
-            ? (e.response?.data['code'] as String?)
-            : null;
-        if (code == 'VENDEUR_ID_REQUIRED') {
-          throw Exception('Identifiant vendeur manquant');
-        } else if (code == 'AFFECTATION_NOT_FOUND') {
-          throw Exception('Aucune affectation pour ce vendeur sur cette tournée aujourd\'hui');
-        }
-        throw Exception('Impossible de démarrer la visite dans l\'état actuel');
-      } else if (e.response?.statusCode == 403) {
-        throw Exception('Accès refusé pour ce client');
-      } else {
-        throw Exception('Erreur serveur lors du check-in');
-      }
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
-    }
+    int vendeurId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    final response = await _apiService.dio.post(
+      '/api/tournee/client/$clientTourneeId/checkin',
+      queryParameters: {
+        'vendeurId': vendeurId,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
+    
+    return VisitStatusResponse.fromJson(response.data);
   }
 
-  /// ✅ Check-out avec commande (sur une visite existante)
-  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
-  /// Endpoint: POST /api/tournee/visite/{visiteId}/checkout-order
-  Future<VisitStatusResponse> checkoutVisiteWithOrder(
+  /// Check-out avec commande (sur une visite existante)
+  /// Endpoint: POST /api/tournee/visite/{visiteId}/checkout-with-order
+  Future<void> checkoutVisiteWithOrder(
+    int visiteId, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _apiService.dio.post(
+      '/api/tournee/visite/$visiteId/checkout-with-order',
+      queryParameters: {
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
+  }
+
+  /// Check-out sans vente (avec motif)
+  /// Endpoint: POST /api/tournee/visite/{visiteId}/checkout-without-order
+  Future<void> checkoutVisiteWithoutOrder(
     int visiteId,
-    {double? latitude, double? longitude}
-  ) async {
-    try {
-      
-      final request = CheckoutRequest.withOrder(
-        latitude: latitude,
-        longitude: longitude,
-      );
-      
-      final response = await _apiService.dio.post(
-        '/api/tournee/visite/$visiteId/checkout-order',
-        data: request.toJson(),
-      );
-      
-      return VisitStatusResponse.fromJson(response.data);
-      
-    } on DioException catch (e) {
-      
-      if (e.response?.statusCode == 404) {
-        throw Exception('Visite introuvable');
-      } else if (e.response?.statusCode == 400) {
-        throw Exception('Impossible de terminer la visite dans l\'état actuel');
-      } else {
-        throw Exception('Erreur serveur lors du check-out');
-      }
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
-    }
+    String motif,
+    String? note, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    await _apiService.dio.post(
+      '/api/tournee/visite/$visiteId/checkout-without-order',
+      data: {
+        'motif': motif,
+        if (note != null) 'note': note,
+      },
+      queryParameters: {
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      },
+    );
   }
 
-  /// ✅ Check-out sans vente (avec motif)
-  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
-  /// Endpoint: POST /api/tournee/visite/{visiteId}/checkout-no-sale
-  Future<VisitStatusResponse> checkoutVisiteWithoutOrder(
-    int visiteId, 
-    String motif, 
-    String? note,
-    {double? latitude, double? longitude}
-  ) async {
-    try {
-      
-      final request = CheckoutRequest.withoutSale(
-        latitude: latitude,
-        longitude: longitude,
-        motif: motif,
-        note: note,
-      );
-      
-      final response = await _apiService.dio.post(
-        '/api/tournee/visite/$visiteId/checkout-no-sale',
-        data: request.toJson(),
-      );
-      
-      return VisitStatusResponse.fromJson(response.data);
-      
-    } on DioException catch (e) {
-      
-      if (e.response?.statusCode == 404) {
-        throw Exception('Visite introuvable');
-      } else if (e.response?.statusCode == 400) {
-        throw Exception('Données invalides pour la clôture');
-      } else {
-        throw Exception('Erreur serveur lors de la clôture de visite');
-      }
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
-    }
-  }
-
-  /// ✅ Obtenir le statut d'une visite
-  /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
+  /// Obtenir le statut d'une visite
   /// Endpoint: GET /api/tournee/visite/{visiteId}/status
   Future<VisitStatusResponse> getVisitStatus(int visiteId) async {
-    try {
-      
-      final response = await _apiService.dio.get(
-        '/api/tournee/visite/$visiteId/status',
-      );
-      
-      return VisitStatusResponse.fromJson(response.data);
-      
-    } on DioException catch (e) {
-      throw Exception('Erreur lors de la récupération du statut');
-    } catch (e) {
-      throw Exception('Erreur inattendue: $e');
-    }
+    final response = await _apiService.dio.get('/api/tournee/visite/$visiteId/status');
+    return VisitStatusResponse.fromJson(response.data);
   }
 
   // ========================================

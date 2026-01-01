@@ -45,7 +45,7 @@ class ErrorConverter {
         
       case 401:
         // Special case for login - return raw response for now (MVP)
-        if (dioException.requestOptions.path.contains('/auth/login')) {
+        if (dioException.requestOptions.path.contains('/api/auth/login')) {
           return UnexpectedException(
             serverMessage.isNotEmpty ? serverMessage : 'Identifiants invalides',
             originalError: dioException,

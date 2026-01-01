@@ -53,7 +53,7 @@ void onInit() {
 Future<LoginResponse> login(String username, String password) async {
   try {
     final data = {
-      'username': username,
+      'email': username,
       'password': password,
       'app': 'MOBILE'
     };
@@ -69,7 +69,7 @@ Future<LoginResponse> login(String username, String password) async {
     };
     loginDio.options.responseType = ResponseType.plain; // Only for login
     
-    final response = await loginDio.post('/api/user/login', data: data);
+    final response = await loginDio.post('/api/auth/login', data: data);
     
     // Parse response manually
     String responseData = response.data.toString();

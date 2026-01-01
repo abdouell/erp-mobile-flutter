@@ -4,9 +4,10 @@ import '../models/order.dart';
 import '../models/order_item.dart';
 import '../exceptions/app_exceptions.dart';
 import 'api_service.dart';
+import '../../services/api_client.dart';
 
 class OrderService extends GetxService {
-  final ApiService _apiService = Get.find<ApiService>();
+  final ApiClient _apiClient = ApiClient();
   
   /// Créer ou mettre à jour une commande
   Future<Order> saveOrder(Order order, {int? clientTourneeId}) async {
@@ -16,7 +17,7 @@ class OrderService extends GetxService {
       orderData['clientTourneeId'] = clientTourneeId;
     }
     
-    final response = await _apiService.dio.post('/api/order', data: orderData);
+    final response = await _apiClient.post('/api/order', data: orderData);
     
     // Map response data to Order object
     if (response.data is! Map<String, dynamic>) {
@@ -30,13 +31,13 @@ class OrderService extends GetxService {
 
   /// Récupérer une commande par son ID
   Future<Order> getOrderById(int orderId) async {
-    final response = await _apiService.dio.get('/api/order/$orderId');
+    final response = await _apiClient.get('/api/order/$orderId');
     return Order.fromJson(response.data);
   }
   
   /// Récupérer toutes les commandes d'un utilisateur
   Future<List<Order>> getUserOrders(int userId) async {
-    final response = await _apiService.dio.get('/api/order/user/$userId');
+    final response = await _apiClient.get('/api/order/user/$userId');
     
     final List<dynamic> ordersJson = response.data ?? [];
     final orders = ordersJson.map((json) => Order.fromJson(json)).toList();
@@ -50,7 +51,7 @@ class OrderService extends GetxService {
   
   /// Récupérer les détails d'une commande
   Future<List<OrderItem>> getOrderDetails(int orderId) async {
-    final response = await _apiService.dio.get('/api/order/$orderId/order-detail');
+    final response = await _apiClient.get('/api/order/$orderId/order-detail');
     
     final List<dynamic> itemsJson = response.data ?? [];
     return itemsJson.map((json) => OrderItem.fromJson(json)).toList();
@@ -58,7 +59,7 @@ class OrderService extends GetxService {
   
   /// Récupérer commandes par statut
   Future<List<Order>> getOrdersByStatus(OrderStatus status) async {
-    final response = await _apiService.dio.get('/api/order/statut/${status.name}');
+    final response = await _apiClient.get('/api/order/statut/${status.name}');
     
     final List<dynamic> ordersJson = response.data ?? [];
     return ordersJson.map((json) => Order.fromJson(json)).toList();
@@ -66,7 +67,7 @@ class OrderService extends GetxService {
   
   /// Télécharger le PDF d'une commande
   Future<List<int>> downloadOrderPdf(int orderId) async {
-    final response = await _apiService.dio.get(
+    final response = await _apiClient.get(
       '/api/order/$orderId/pdf',
       options: Options(responseType: ResponseType.bytes),
     );

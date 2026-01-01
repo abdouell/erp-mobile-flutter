@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/tournee.dart';
 import '../models/vendeur.dart';
-import '../models/user.dart';
+import '../../../models/user_dto.dart';
 import '../services/tournee_service.dart';
 import '../services/location_service.dart';
 import '../exceptions/app_exceptions.dart';
@@ -52,7 +52,7 @@ class TourneeController extends GetxController {
       hasError.value = false;
       
       // 1. Récupérer user connecté
-      final User? currentUser = _authController.user.value;
+      final UserDto? currentUser = _authController.user.value;
       if (currentUser == null) {
         throw Exception('Utilisateur non connecté');
       }

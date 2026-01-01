@@ -7,9 +7,10 @@ import '../models/client_tournee.dart';
 import '../models/requests/checkout_request.dart';
 import '../models/requests/visit_status_response.dart';
 import 'api_service.dart';
+import '../../services/api_client.dart';
 
 class TourneeService extends GetxService {
-  final ApiService _apiService = Get.find<ApiService>();
+  final ApiClient _apiClient = ApiClient();
 
   // ========================================
   // VENDEUR
@@ -17,7 +18,7 @@ class TourneeService extends GetxService {
 
   /// Récupérer vendeur par userId
   Future<Vendeur> getVendeurByUserId(int userId) async {
-    final response = await _apiService.dio.get('/api/vendeur/user/$userId');
+    final response = await _apiClient.get('/api/vendeur/user/$userId');
     return Vendeur.fromJson(response.data);
   }
 
@@ -27,7 +28,7 @@ class TourneeService extends GetxService {
 
   /// Récupérer tournée du jour pour un vendeur
   Future<Tournee?> getTourneeToday(int vendeurId) async {
-    final response = await _apiService.dio.get('/api/tournee/vendeur/$vendeurId/today');
+    final response = await _apiClient.get('/api/tournee/vendeur/$vendeurId/today');
     
     final List<dynamic> tourneesJson = response.data;
     
@@ -41,7 +42,7 @@ class TourneeService extends GetxService {
 
   /// Clôturer une tournée (affectation-aware)
   Future<void> clotureTournee(int tourneeId, int vendeurId) async {
-    await _apiService.dio.post(
+    await _apiClient.post(
       '/api/tournee/$tourneeId/cloture',
       queryParameters: {
         'vendeurId': vendeurId,
@@ -67,7 +68,7 @@ class TourneeService extends GetxService {
       clientTimestamp: DateTime.now().toIso8601String(),
     );
     
-    final response = await _apiService.dio.post(
+    final response = await _apiClient.post(
       '/api/tournee/client/$clientTourneeId/checkin',
       queryParameters: {
         'vendeurId': vendeurId,
@@ -90,8 +91,8 @@ class TourneeService extends GetxService {
       longitude: longitude,
     );
     
-    final response = await _apiService.dio.post(
-      '/api/tournee/visite/$visiteId/checkout-order',
+    final response = await _apiClient.post(
+      '/tournee/visite/$visiteId/checkout-order',
       data: request.toJson(),
     );
     
@@ -114,8 +115,8 @@ class TourneeService extends GetxService {
       note: note,
     );
     
-    final response = await _apiService.dio.post(
-      '/api/tournee/visite/$visiteId/checkout-no-sale',
+    final response = await _apiClient.post(
+      '/tournee/visite/$visiteId/checkout-no-sale',
       data: request.toJson(),
     );
     
@@ -126,8 +127,8 @@ class TourneeService extends GetxService {
   /// ⚠️ CHANGEMENT: Prend maintenant un visiteId au lieu de clientTourneeId
   /// Endpoint: GET /api/tournee/visite/{visiteId}/status
   Future<VisitStatusResponse> getVisitStatus(int visiteId) async {
-    final response = await _apiService.dio.get(
-      '/api/tournee/visite/$visiteId/status',
+    final response = await _apiClient.get(
+      '/tournee/visite/$visiteId/status',
     );
     
     return VisitStatusResponse.fromJson(response.data);

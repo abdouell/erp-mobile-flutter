@@ -12,7 +12,7 @@ class LoginResponse {
   // Convertir réponse JSON backend → LoginResponse
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      token: json['token'],
+      token: json['accessToken'],  // Backend sends 'accessToken' not 'token'
       user: User.fromJson(json['user']),
     );
   }

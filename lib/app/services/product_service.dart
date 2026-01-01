@@ -1,9 +1,10 @@
 import 'package:get/get.dart';
 import '../models/product.dart';
 import 'api_service.dart';
+import '../../services/api_client.dart';
 
 class ProductService extends GetxService {
-  final ApiService _apiService = Get.find<ApiService>();
+  final ApiClient _apiClient = ApiClient();
   
   // Cache simple pour les produits
   List<Product>? _cachedProducts;
@@ -15,7 +16,7 @@ class ProductService extends GetxService {
       return _cachedProducts!;
     }
     
-    final response = await _apiService.dio.get('/api/product');
+    final response = await _apiClient.get('/api/product');
 
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();
@@ -44,8 +45,7 @@ class ProductService extends GetxService {
   /// Avec pricing client si customerId fourni
   /// Utilisé pour les vendeurs conventionnels
   Future<List<Product>> getProductsByEmplacement(String emplacementCode, {int? customerId}) async {
-    final response = await _apiService.dio.get(
-      '/api/product/emplacement/$emplacementCode/stock',
+    final response = await _apiClient.get('/api/product/emplacement/$emplacementCode/stock',
       queryParameters: customerId != null ? {'customerId': customerId} : null,
     );
 
@@ -58,7 +58,7 @@ class ProductService extends GetxService {
   /// Récupérer les produits avec tarification client personnalisée
   /// Affiche prix catalogue + prix client + % remise
   Future<List<Product>> getProductsForCustomer(int customerId) async {
-    final response = await _apiService.dio.get('/api/product/customer/$customerId/pricing');
+    final response = await _apiClient.get('/api/product/customer/$customerId/pricing');
     
     final List<dynamic> productsJson = response.data ?? [];
     final products = productsJson.map((json) => Product.fromJson(json)).toList();

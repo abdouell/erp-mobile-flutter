@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../models/user.dart';
-import '../models/login_response.dart';
-import '../services/api_service.dart';
+import '../../models/user_dto.dart';
+import '../../services/auth_service.dart';
 
 class AuthController extends GetxController {
   // Services
-  final ApiService _apiService = Get.find<ApiService>();
+  final AuthService _authService = AuthService();
   final _storage = GetStorage();
   
   // États réactifs
   final isLoading = false.obs;
   final isAuthenticated = false.obs;
-  final user = Rxn<User>();
+  final user = Rxn<UserDto>();
   
   // Champs du formulaire
   final username = ''.obs;
@@ -36,7 +36,7 @@ class AuthController extends GetxController {
     
     if (token != null && userData != null) {
       try {
-        user.value = User.fromJson(userData);
+        user.value = UserDto.fromJson(userData);
         isAuthenticated.value = true;
       } catch (e) {
         _clearAuth();
@@ -54,22 +54,20 @@ class AuthController extends GetxController {
   isLoading.value = true;
   
   try {
-
-    final LoginResponse response = await _apiService.login(
+    final UserDto userData = await _authService.login(
       username.value.trim(),
       password.value,
     );
     
-    // Succès
-    await _storage.write(_tokenKey, response.token);
-    await _storage.write(_userKey, response.user.toJson());
+    // Succès - AuthService already saves tokens
+    await _storage.write(_userKey, userData.toJson());
     
-    user.value = response.user;
+    user.value = userData;
     isAuthenticated.value = true;
 
     Get.snackbar(
       'Connexion réussie',
-      'Bienvenue ${response.user.displayName}',
+      'Bienvenue ${userData.displayName}',
       backgroundColor: Get.theme.colorScheme.primary,
       colorText: Get.theme.colorScheme.onPrimary,
     );

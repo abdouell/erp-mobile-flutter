@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
+import '../../../models/user_dto.dart';
 
 class LoginView extends GetView<AuthController> {
   @override

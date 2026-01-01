@@ -6,12 +6,13 @@ import '../models/sale_response.dart';
 import '../models/sales_document_history.dart';
 import '../models/order.dart';
 import 'api_service.dart';
+import '../../services/api_client.dart';
 
 class SalesService extends GetxService {
-  final ApiService _apiService = Get.find<ApiService>();
+  final ApiClient _apiClient = ApiClient();
 
   Future<SaleResponse> createSale(SaleRequest request) async {
-    final response = await _apiService.dio.post('/api/sales', data: request.toJson());
+    final response = await _apiClient.post('/api/sales', data: request.toJson());
 
     if (response.data is Map<String, dynamic>) {
       return SaleResponse.fromJson(response.data as Map<String, dynamic>);
@@ -22,7 +23,7 @@ class SalesService extends GetxService {
 
   /// Historique unifié des ventes (ORDER + BL) pour un utilisateur
   Future<List<SalesDocumentHistory>> getUserHistory(int userId) async {
-    final response = await _apiService.dio.get('/api/sales/history/user/$userId');
+    final response = await _apiClient.get('/api/sales/history/user/$userId');
 
     if (response.data is List) {
       final List<dynamic> jsonList = response.data as List<dynamic>;
@@ -40,8 +41,7 @@ class SalesService extends GetxService {
     required String type,
     required int id,
   }) async {
-    final response = await _apiService.dio.get(
-      '/api/sales/documents/details',
+    final response = await _apiClient.get('/api/sales/documents/details',
       queryParameters: {
         'type': type,
         'id': id,
@@ -93,8 +93,8 @@ class SalesService extends GetxService {
     required String type,
     required int id,
   }) async {
-    final response = await _apiService.dio.get(
-      '/api/sales/documents/pdf',
+    final response = await _apiClient.get(
+      '/sales/documents/pdf',
       queryParameters: {
         'type': type,
         'id': id,

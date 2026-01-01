@@ -33,12 +33,14 @@ dependencies:
 
   # State Management
   get: ^4.6.6
+  provider: ^6.0.5  # Added for AuthProvider
   
   # HTTP & API
   dio: ^5.3.2
   
-  # Local Storage
+  # Storage
   get_storage: ^2.1.1
+  flutter_secure_storage: ^8.0.0  # Added for secure token storage
   
   # Icons
   cupertino_icons: ^1.0.2

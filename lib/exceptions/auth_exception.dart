@@ -8,17 +8,17 @@ class AuthException implements Exception {
 }
 
 class TokenExpiredException extends AuthException {
-  TokenExpiredException() : super('Token has expired');
+  TokenExpiredException() : super('Votre session a expiré');
 }
 
 class InvalidCredentialsException extends AuthException {
-  InvalidCredentialsException() : super('Invalid email or password');
+  InvalidCredentialsException() : super('Identifiants incorrects');
 }
 
 class NetworkException extends AuthException {
-  NetworkException(String message) : super('Network error: $message');
+  NetworkException(String message) : super('Erreur réseau: $message');
 }
 
 class SessionExpiredException extends AuthException {
-  SessionExpiredException() : super('Session expired, please login again');
+  SessionExpiredException() : super('Session expirée, veuillez vous reconnecte');
 }
